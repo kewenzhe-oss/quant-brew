@@ -39,6 +39,7 @@ from app.data_providers.sentiment import (
     fetch_fear_greed_index, fetch_vix, fetch_dollar_index,
     fetch_yield_curve, fetch_vxn, fetch_gvz, fetch_put_call_ratio,
 )
+from app.data_providers.fed_liquidity import fetch_fed_liquidity
 from app.data_providers.news import fetch_financial_news, get_economic_calendar
 from app.data_providers.heatmap import generate_heatmap_data
 from app.data_providers.opportunities import (
@@ -183,7 +184,7 @@ def market_sentiment():
 
         logger.info("Fetching fresh sentiment data (comprehensive)")
 
-        with ThreadPoolExecutor(max_workers=7) as executor:
+        with ThreadPoolExecutor(max_workers=8) as executor:
             futures = {
                 executor.submit(fetch_fear_greed_index): "fear_greed",
                 executor.submit(fetch_vix): "vix",
@@ -192,6 +193,7 @@ def market_sentiment():
                 executor.submit(fetch_vxn): "vxn",
                 executor.submit(fetch_gvz): "gvz",
                 executor.submit(fetch_put_call_ratio): "vix_term",
+                executor.submit(fetch_fed_liquidity): "fed_liquidity",
             }
             results = {}
             for future in as_completed(futures):
@@ -217,6 +219,13 @@ def market_sentiment():
             "vxn": results.get("vxn") or {"value": 0, "level": "unknown"},
             "gvz": results.get("gvz") or {"value": 0, "level": "unknown"},
             "vix_term": results.get("vix_term") or {"value": 1.0, "level": "unknown"},
+            # Fed balance sheet liquidity — WALCL / TGA / RRP
+            # data_quality = 'real' | 'partial' | 'unavailable'
+            "fed_liquidity": results.get("fed_liquidity") or {
+                "walcl": None, "tga": None, "rrp": None,
+                "net_liquidity": None, "data_quality": "unavailable",
+                "source": "FRED via yfinance",
+            },
             "timestamp": int(time.time()),
         }
 

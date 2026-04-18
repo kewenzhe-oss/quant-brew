@@ -50,42 +50,97 @@ export function assessMacroDimensions(
 
 /* ── Liquidity
  *
- * True liquidity inputs (WALCL, TGA, RRP, WRESBAL, M2SL, SOFR, EFFR, NFCI)
- * are not available in the current API pipeline.
+ * Data sources (in order of priority):
+ *   1. SentimentData.fed_liquidity — WALCL / TGA / RRP from FRED via yfinance
+ *      → populates 净流动性 metrics (real/partial)
+ *   2. SentimentData.us10y + yield_curve + dxy — financial conditions proxy
+ *      → populates 金融条件 metrics (always present if sentiment available)
  *
- * Available proxy: 10Y yield + yield curve spread from SentimentData.
- * These are correctly classified as `金融条件` (financial conditions) inputs,
- * not direct balance-sheet liquidity data.
- *
- * The assessment is marked as partial/proxy until real Fed data is connected.
- * Confidence is capped at 45 to reflect this.
+ * Confidence scale:
+ *   all 3 FRED series real → 72
+ *   partial FRED            → 58
+ *   proxy only              → 45
+ *   no data at all          → 35 (placeholder)
  */
 
 function assessLiquidity(s: SentimentData | undefined): DimensionAssessment {
-  if (!s?.us10y) {
+  if (!s?.us10y && !s?.fed_liquidity) {
     return placeholderDimension(
       'liquidity',
       '流动性核心数据（WALCL / TGA / RRP / M2）尚未接入，评估受限。',
     );
   }
 
-  const y10       = s.us10y.value;
-  const y10Change = s.us10y.change;
-  const spread    = s.yield_curve?.spread;
-  const dxy       = s.dxy;
+  const fed    = s?.fed_liquidity;
+  const y10    = s?.us10y?.value;
+  const y10Chg = s?.us10y?.change ?? 0;
+  const spread = s?.yield_curve?.spread;
+  const dxy    = s?.dxy;
 
-  // Financial conditions proxy metrics (all that's available now)
-  const metrics: DimensionMetric[] = [
-    {
+  /* ── Build metrics ── */
+  const metrics: DimensionMetric[] = [];
+
+  // Real fed balance sheet metrics (when available)
+  if (fed?.walcl !== null && fed?.walcl !== undefined) {
+    metrics.push({
+      key: 'walcl',
+      label: '美联储总资产 WALCL',
+      value: fed.walcl,
+      unit: 'B USD',
+      change: null,
+      change_unit: 'B USD',
+      context: `净流动性基础 — ${fed.walcl > 8000 ? 'QT进行中，较峰值收缩' : '资产负债表相对收缩'}`,
+    });
+  }
+
+  if (fed?.tga !== null && fed?.tga !== undefined) {
+    metrics.push({
+      key: 'tga',
+      label: '财政部账户 TGA',
+      value: fed.tga,
+      unit: 'B USD',
+      change: null,
+      change_unit: 'B USD',
+      context: fed.tga > 600 ? '余额偏高，流动性被吸收' : fed.tga < 200 ? '余额偏低，流动性释放压力减轻' : '余额中性',
+    });
+  }
+
+  if (fed?.rrp !== null && fed?.rrp !== undefined) {
+    metrics.push({
+      key: 'rrp',
+      label: '隔夜逆回购 RRP',
+      value: fed.rrp,
+      unit: 'B USD',
+      change: null,
+      change_unit: 'B USD',
+      context: fed.rrp < 100 ? 'RRP余额大幅消耗，货币市场流动性已基本回流' : fed.rrp > 500 ? 'RRP余额偏高，流动性仍被锁定在美联储' : 'RRP余额中等',
+    });
+  }
+
+  if (fed?.net_liquidity !== null && fed?.net_liquidity !== undefined) {
+    metrics.push({
+      key: 'net_liquidity',
+      label: '美国净流动性 (WALCL−TGA−RRP)',
+      value: fed.net_liquidity,
+      unit: 'B USD',
+      change: null,
+      change_unit: 'B USD',
+      context: fed.net_liquidity > 5500 ? '净流动性宽松' : fed.net_liquidity < 4000 ? '净流动性偏紧' : '净流动性中性',
+    });
+  }
+
+  // Financial conditions proxy metrics (always show if available)
+  if (y10 !== undefined) {
+    metrics.push({
       key: 'us10y',
       label: '10Y 美债（金融条件代理）',
       value: y10,
       unit: '%',
-      change: y10Change,
+      change: y10Chg,
       change_unit: '%',
-      context: y10Change < -0.01 ? '收益率回落，金融条件偏松' : y10Change > 0.01 ? '收益率上行，资金成本抬升' : '窄幅震荡',
-    },
-  ];
+      context: y10Chg < -0.01 ? '收益率回落，金融条件偏松' : y10Chg > 0.01 ? '收益率上行，资金成本抬升' : '窄幅震荡',
+    });
+  }
 
   if (spread !== undefined) {
     metrics.push({
@@ -107,34 +162,74 @@ function assessLiquidity(s: SentimentData | undefined): DimensionAssessment {
       unit: 'index',
       change: dxy.change,
       change_unit: 'pts',
-      context: dxy.change_percent > 0.3 ? '美元走强，全球流动性收紧压力上升' : dxy.change_percent < -0.3 ? '美元走弱，全球流动性压力缓释' : '美元窄幅震荡',
+      context: (dxy.change_percent ?? 0) > 0.3 ? '美元走强，全球流动性收紧' : (dxy.change_percent ?? 0) < -0.3 ? '美元走弱，全球流动性压力缓释' : '美元窄幅震荡',
     });
   }
 
-  // Status derived from financial conditions proxy (partial confidence only)
+  /* ── Status — derived from real fed data when available, proxy otherwise ── */
   let status: DimensionStatus = 'neutral';
   let signal: DimensionSignal = 'mixed';
   let change: DimensionChange = 'stable';
 
-  if (y10Change < -0.02) {
-    change = 'improving';
-    signal = 'risk_supportive';
-    status = 'neutral'; // cannot say "healthy" without real liquidity data
-  } else if (y10Change > 0.03 || (spread !== undefined && spread < -30)) {
-    change = 'weakening';
-    signal = 'risk_headwind';
-    status = 'watch';
+  if (fed?.net_liquidity !== null && fed?.net_liquidity !== undefined) {
+    // Derive from real net liquidity
+    const net = fed.net_liquidity;
+    if (net > 5800) {
+      status = 'healthy'; signal = 'risk_supportive'; change = 'improving';
+    } else if (net > 4800) {
+      status = 'neutral'; signal = 'mixed';
+    } else if (net > 3800) {
+      status = 'watch'; signal = 'risk_headwind'; change = 'weakening';
+    } else {
+      status = 'pressured'; signal = 'risk_headwind'; change = 'weakening';
+    }
+    // Reinforce with financial conditions proxy directional signal
+    if (y10 !== undefined && y10Chg < -0.02 && status !== 'pressured') change = 'improving';
+    if (y10 !== undefined && y10Chg > 0.03) change = change === 'improving' ? 'stable' : 'weakening';
+  } else if (y10 !== undefined) {
+    // Financial conditions proxy only
+    if (y10Chg < -0.02) { change = 'improving'; signal = 'risk_supportive'; }
+    else if (y10Chg > 0.03 || (spread !== undefined && spread < -30)) {
+      change = 'weakening'; signal = 'risk_headwind'; status = 'watch';
+    }
   }
 
-  const why_it_matters = [
-    '净流动性（WALCL − TGA − RRP）是市场可用资金的最直接度量，但该数据尚未接入。',
-    '当前以10Y收益率与曲线形态作为金融条件的部分代理，置信度受限。',
-    'M2货币供应量（M2SL）与准备金余额（WRESBAL）将在数据接入后补充本维度。',
-  ];
+  /* ── Confidence ── */
+  const fedQuality = fed?.data_quality ?? 'unavailable';
+  const confidence =
+    fedQuality === 'real'        ? 72 :
+    fedQuality === 'partial'     ? 58 :
+                                   45;  // proxy only
+
+  /* ── Summary ── */
+  const hasFed = fed?.net_liquidity !== null && fed?.net_liquidity !== undefined;
+  const summary = hasFed
+    ? `美国净流动性 ${fed!.net_liquidity!.toFixed(0)}B USD（WALCL ${fed!.walcl ?? '?'}B − TGA ${fed!.tga ?? '?'}B − RRP ${fed!.rrp ?? '?'}B）。` +
+      (y10 !== undefined ? ` 金融条件代理：10Y ${y10.toFixed(2)}%。` : '')
+    : `流动性评估以金融条件代理（10Y ${y10?.toFixed(2) ?? '?'}%` +
+      (spread !== undefined ? `，曲线利差 ${spread.toFixed(0)}bps` : '') +
+      `）为基础，置信度受限（${confidence}%）。WALCL/TGA/RRP数据接入后将替换本评估。`;
+
+  const why_it_matters = hasFed
+    ? [
+        `净流动性 = WALCL（${fed!.walcl ?? '?'}B）− TGA（${fed!.tga ?? '?'}B）− RRP（${fed!.rrp ?? '?'}B）= ${fed!.net_liquidity!.toFixed(0)}B USD。`,
+        '净流动性是市场实际可用资金的直接度量，历史上与风险资产表现高度相关（领先约 3–6 个月）。',
+      ]
+    : [
+        '净流动性（WALCL − TGA − RRP）是市场可用资金的最直接度量，但该数据尚未成功接入。',
+        '当前以10Y收益率与曲线形态作为金融条件的部分代理，置信度受限。',
+      ];
 
   const risks: string[] = [];
-  if (y10Change > 0.03) risks.push('金融条件代理显示收紧，实际净流动性状态待真实数据确认。');
-  if (spread !== undefined && spread < -20) risks.push('曲线深度倒挂暗示流动性传导受阻。');
+  if (fed?.rrp !== null && fed?.rrp !== undefined && fed.rrp < 50) {
+    risks.push('RRP余额接近耗尽，货币市场流动性缓冲已显著减少。');
+  }
+  if (y10 !== undefined && y10Chg > 0.03) {
+    risks.push('金融条件代理显示收紧（10Y快速上行），实际流动性压力待确认。');
+  }
+  if (spread !== undefined && spread < -20) {
+    risks.push('曲线深度倒挂暗示流动性传导受阻。');
+  }
 
   const watchpoints = [
     '美联储资产负债表（WALCL）周度更新：净扩张或收缩方向',
@@ -143,24 +238,9 @@ function assessLiquidity(s: SentimentData | undefined): DimensionAssessment {
     'M2同比增速是否出现正增长拐点',
   ];
 
-  // Confidence hard-capped at 45 — proxy only, no real liquidity data yet
-  const confidence = 45;
-  const summary =
-    `当前流动性评估以金融条件代理（10Y ${y10.toFixed(2)}%` +
-    (spread !== undefined ? `，曲线利差 ${spread.toFixed(0)}bps` : '') +
-    `）为基础，置信度受限（${confidence}%）。` +
-    `净流动性核心指标（WALCL/TGA/RRP）数据接入后将替换本评估。`;
-
   return {
-    status,
-    signal,
-    change,
-    confidence,
-    summary,
-    metrics,
-    why_it_matters,
-    risks,
-    watchpoints,
+    status, signal, change, confidence, summary, metrics,
+    why_it_matters, risks, watchpoints,
   };
 }
 

@@ -77,8 +77,9 @@ export const CHANGE_LABELS: Record<DimensionChange, string> = {
 export type DimensionDataQuality = 'real' | 'proxy' | 'partial';
 
 export const DIMENSION_DATA_QUALITY: Record<DimensionKey, DimensionDataQuality> = {
-  // 10Y yield + yield curve — real from useSentiment
-  liquidity: 'real',
+  // 10Y yield + DXY + yield curve — financial CONDITIONS proxy, not liquidity data
+  // True liquidity (WALCL/TGA/RRP/M2) is not connected yet → proxy
+  liquidity: 'proxy',
   // Index breadth proxy — no direct PMI/jobless/GDP in current API
   economy: 'proxy',
   // 10Y + yield curve spread — real from useSentiment

@@ -48,7 +48,7 @@ export function MacroDimensionPage() {
         <DimensionVerdictBlock verdict={detail.verdict} summary={detail.verdict.oneLiner} />
 
         {/* 2b. Liquidity-specific: two overview indicators */}
-        {dimensionKey === 'liquidity' && <LiquidityOverviewStrip />}
+        {dimensionKey === 'liquidity' && <LiquidityOverviewStrip detail={detail} />}
 
         {/* 3. Three-part interpretation */}
         <DimensionInterpretationBlock interpretation={detail.interpretation} />
@@ -74,14 +74,20 @@ export function MacroDimensionPage() {
 
 /* ── Two top-level liquidity overview indicators ──
  *
- * 美国流动性 = WALCL − TGA − RRP   (data pending)
- * 全球流动性 = Fed + ECB + BOJ − TGA − ¼ RRP  (data pending)
- *
- * Both show honest pending state. Scaffold is live so the page structure
- * is correct from day one. Values will populate when Fed data endpoints
- * are connected.
+ * Shows real values when WALCL/TGA/RRP are connected.
+ * Shows honest pending when still unavailable.
+ * Formula and source always visible.
  */
-function LiquidityOverviewStrip() {
+function LiquidityOverviewStrip({ detail }: { detail: ReturnType<typeof buildDimensionDetail> }) {
+  const netLiq = detail.modules
+    .flatMap((m) => m.metrics)
+    .find((m) => m.key === 'net_liquidity');
+
+  const netValue  = netLiq?.value   ?? null;
+  const netCtx    = netLiq?.context ?? null;
+  const isPartial = detail.verdict.dataQuality === 'partial';
+  const isPending = netValue === null;
+
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionTitle}>流动性概览</h2>
@@ -89,10 +95,22 @@ function LiquidityOverviewStrip() {
 
         <div className={styles.overviewCard}>
           <span className={styles.overviewCardLabel}>🇺🇸 美国净流动性</span>
-          <span className={styles.overviewCardPending}>数据待接入</span>
+          {isPending ? (
+            <span className={styles.overviewCardPending}>数据待接入</span>
+          ) : (
+            <>
+              <span className={styles.overviewCardValue}>
+                {netValue !== null ? `${(netValue / 1000).toFixed(1)}T` : '—'}
+              </span>
+              {netCtx && <span className={styles.overviewCardCtx}>{netCtx}</span>}
+              {isPartial && (
+                <span className={styles.overviewCardPending}>部分数据（分量数据不完整）</span>
+              )}
+            </>
+          )}
           <span className={styles.overviewCardSub}>
             公式：WALCL − TGA − RRP<br />
-            数据源：美联储 H.4.1（周度）
+            数据源：FRED H.4.1（周度）
           </span>
         </div>
 

@@ -331,57 +331,69 @@ function buildModules(key: DimensionKey, dim: DimensionAssessment): DimensionMod
 /* ── 流动性 modules — four causal steps ── */
 
 function buildLiquidityModules(dim: DimensionAssessment): DimensionModule[] {
-  // Separate: real (financial conditions proxies) vs. not-yet-real (balance sheet)
-  const financialConditionsMetrics = dim.metrics.filter((m) =>
+  // Separate metrics by semantic role
+  const fedMetrics   = dim.metrics.filter((m) =>
+    ['walcl', 'tga', 'rrp', 'net_liquidity'].includes(m.key),
+  );
+  const finCondMetrics = dim.metrics.filter((m) =>
     ['us10y', 'yield_spread_2s10s', 'dxy'].includes(m.key),
   );
 
+  // Net liquidity value for module 01 context
+  const netLiq = dim.metrics.find((m) => m.key === 'net_liquidity');
+  const walcl  = dim.metrics.find((m) => m.key === 'walcl');
+  const tga    = dim.metrics.find((m) => m.key === 'tga');
+  const rrp    = dim.metrics.find((m) => m.key === 'rrp');
+
   return [
 
-    /* 01 净流动性 — market-usable money (WALCL − TGA − RRP) */
+    /* 01 净流动性 — what is the number? */
     {
       id: 'net_liquidity',
       title: '01  净流动性',
       moduleQuestion: '扣除财政部账户与逆回购后，市场上实际可流通的资金净额是多少？',
       investImplication:
         '净流动性上升 → 市场可用资金增加，风险资产倾向于上涨。\n净流动性下降 → 市场资金收缩，即使指数表面稳定，流动性条件已收紧。\n公式：净流动性 = WALCL（美联储总资产）− TGA（财政部账户）− RRP（隔夜逆回购）',
-      metrics: [], // WALCL, TGA, RRP — not in API yet
+      // Show net_liquidity + its components if real, else empty (pending)
+      metrics: netLiq
+        ? [netLiq, ...(fedMetrics.filter((m) => ['walcl', 'tga', 'rrp'].includes(m.key)))]
+        : [],
       chartMetricKey: 'net_liquidity',
       chartLabel: '美国净流动性走势',
     },
 
-    /* 02 资产负债表 — source and drain mechanics */
+    /* 02 资产负债表 — where does the money come from / go? */
     {
       id: 'balance_sheet',
       title: '02  资产负债表',
       moduleQuestion: '美联储在扩张还是收缩？财政部和逆回购在吸收还是释放流动性？',
       investImplication:
         'WALCL 扩张 → 美联储注资，流动性来源增加。\nTGA 上升 → 财政部积累资金，从市场吸收流动性。\nRRP 下降 → 货币市场基金将资金从美联储转回市场，净流动性增加。\nWRESBAL 下降 → 银行准备金减少，信贷扩张空间收窄。',
-      metrics: [], // WALCL, TGA, RRP, WRESBAL — not in API yet
+      metrics: [walcl, tga, rrp].filter(Boolean) as typeof dim.metrics,
       chartMetricKey: 'walcl',
       chartLabel: '美联储总资产（WALCL）走势',
     },
 
-    /* 03 货币供应 M2 — transmission to broad money */
+    /* 03 货币供应 M2 — has the money transmitted to the broader economy? */
     {
       id: 'm2',
       title: '03  货币供应 M2',
       moduleQuestion: '流动性投入是否已从金融体系传导至更广泛的货币与信贷供给？',
       investImplication:
         'M2 同比由负转正 → 实体经济货币供给恢复增长，信贷扩张信号。\nM2 持续收缩或停滞 → 货币传导受阻，实体流动性偏紧，抑制消费与投资。\n注意：M2 变化通常滞后于美联储操作 6–12 个月。',
-      metrics: [], // M2SL — not in API yet
+      metrics: [], // M2SL — FRED, not yet connected
       chartMetricKey: 'm2sl',
       chartLabel: 'M2 货币供应同比走势',
     },
 
-    /* 04 金融条件 — price and difficulty of money */
+    /* 04 金融条件 — is money cheap or expensive? */
     {
       id: 'financial_conditions',
       title: '04  金融条件',
       moduleQuestion: '资金现在是便宜还是昂贵？借贷成本是否对消费和投资形成压制？',
       investImplication:
         '10Y 收益率上行 → 折现率抬升，长久期资产（成长股、债券）估值承压。\n曲线深度倒挂 → 历史上领先衰退 12–18 个月，信贷传导受阻。\nDXY 走强 → 全球美元流动性回流，新兴市场及大宗商品承压。\nSOFR / NFCI 数据接入后将量化实际借贷成本与整体金融条件松紧度。',
-      metrics: financialConditionsMetrics, // real: 10Y, spread, DXY
+      metrics: finCondMetrics, // real: 10Y, spread, DXY always present
       chartMetricKey: 'us10y',
       chartLabel: '10Y 美债收益率',
     },

@@ -28,7 +28,28 @@ export interface SentimentData {
   vxn?: { value: number; change: number };
   gvz?: { value: number; change: number };
   put_call_ratio?: { value: number; status: string };
+  /** Fed balance sheet liquidity — WALCL / TGA / RRP via FRED */
+  fed_liquidity?: FedLiquidityData;
   timestamp: string;
+}
+
+/**
+ * Fed balance sheet liquidity data.
+ * All values in billions USD (FRED weekly series).
+ * null = that specific series failed to fetch.
+ * data_quality = 'real' (all 3 present) | 'partial' (some) | 'unavailable' (none)
+ */
+export interface FedLiquidityData {
+  /** WALCL — Fed total assets (billions USD) */
+  walcl: number | null;
+  /** WTREGEN — Treasury General Account (billions USD) */
+  tga: number | null;
+  /** RRPONTSYD — Overnight Reverse Repo (billions USD) */
+  rrp: number | null;
+  /** WALCL − TGA − RRP (billions USD) — null if any component missing */
+  net_liquidity: number | null;
+  data_quality: 'real' | 'partial' | 'unavailable';
+  source: string;
 }
 
 export interface HeatmapItem {
