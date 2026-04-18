@@ -1,0 +1,42 @@
+:root {
+  /* ── Backgrounds ── */
+  --bg-base: #1C1C1E;
+  --bg-surface: #242426;
+  --bg-elevated: #2C2C2E;
+
+  /* ── Borders ── */
+  --border-dim: #3A3A3C;
+  --border-focus: #555557;
+
+  /* ── Text ── */
+  --text-primary: #F5F5F7;
+  --text-secondary: #8E8E93;
+  --text-caption: #636366;
+
+  /* ── Accent ── */
+  --accent-gold: #D4AF37;
+  --accent-gold-dim: #B8860B;
+
+  /* ── Status ── */
+  --status-up: #16a34a;
+  --status-down: #dc2626;
+  --status-live: #00FA9A;
+  --status-up-bg: rgba(22, 163, 74, 0.12);
+  --status-down-bg: rgba(220, 38, 38, 0.12);
+
+  /* ── Fonts ── */
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-ui: 'Inter', -apple-system, 'SF Pro', sans-serif;
+
+  /* ── Spacing ── */
+  --space-unit: 4px;
+  --strip-height: 48px;
+  --card-padding: 12px 16px;
+  --section-gap: 24px;
+  --column-gap: 1px;
+
+  /* ── Geometry ── */
+  --radius: 0px;
+  --border-width: 1px;
+}

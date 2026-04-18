@@ -1,0 +1,95 @@
+.strip {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  height: var(--strip-height);
+  padding: 0 16px;
+  background: var(--bg-base);
+  border-bottom: var(--border-width) solid var(--border-dim);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.tickers {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+  scrollbar-width: none;
+}
+
+.tickers::-webkit-scrollbar {
+  display: none;
+}
+
+.tickerItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.tickerLabel {
+  color: var(--text-caption);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tickerValue {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.up {
+  color: var(--status-up);
+  font-size: 12px;
+}
+
+.down {
+  color: var(--status-down);
+  font-size: 12px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.navLink {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  text-decoration: none;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--text-primary);
+}
+
+.navActive {
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent-gold);
+}

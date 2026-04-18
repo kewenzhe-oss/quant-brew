@@ -1,0 +1,22 @@
+.main {
+  max-width: 760px;
+}
+
+.noSymbol {
+  padding: 60px 0;
+}
+
+.noSymbolTitle {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.noSymbolHint {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-caption);
+  line-height: 1.6;
+}

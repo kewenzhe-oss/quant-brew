@@ -1,0 +1,17 @@
+.label {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  padding: 2px 6px;
+  border: var(--border-width) solid var(--border-dim);
+  border-radius: var(--radius);
+}
+
+.default { color: var(--text-caption); }
+.gold { color: var(--accent-gold); border-color: var(--accent-gold-dim); }
+.up { color: var(--status-up); border-color: var(--status-up); background: var(--status-up-bg); }
+.down { color: var(--status-down); border-color: var(--status-down); background: var(--status-down-bg); }

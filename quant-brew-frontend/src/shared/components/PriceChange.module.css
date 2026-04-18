@@ -1,0 +1,29 @@
+.wrapper {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.price {
+  color: var(--text-primary);
+}
+
+.change,
+.percent {
+  font-weight: 500;
+}
+
+.up {
+  color: var(--status-up);
+}
+
+.down {
+  color: var(--status-down);
+}
+
+/* sizes */
+.sm { font-size: 12px; }
+.md { font-size: 14px; }
+.lg { font-size: 18px; }

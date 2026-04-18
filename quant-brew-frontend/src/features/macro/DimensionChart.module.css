@@ -1,0 +1,103 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chartLabel {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-caption);
+}
+
+.timeframes {
+  display: flex;
+  gap: 4px;
+}
+
+.timeframeBtn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-dim);
+  background: transparent;
+  color: var(--text-caption);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.timeframeBtn:hover {
+  border-color: var(--accent-gold);
+  color: var(--text-secondary);
+}
+
+.timeframeBtn.active {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  background: rgba(212, 175, 55, 0.06);
+}
+
+.chartCanvas {
+  width: 100%;
+  height: 200px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* ── Pending state ── */
+
+.pendingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  border: 1px dashed var(--border-dim);
+  border-radius: 6px;
+  gap: 6px;
+  background: var(--bg-page, rgba(0, 0, 0, 0.1));
+}
+
+.pendingIcon {
+  font-size: 20px;
+  opacity: 0.4;
+}
+
+.pendingTitle {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-caption);
+  font-weight: 500;
+}
+
+.pendingNotice {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-caption);
+  opacity: 0.6;
+}
+
+.pendingTimeframes {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.timeframeDisabled {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-dim);
+  color: var(--text-caption);
+  opacity: 0.35;
+}

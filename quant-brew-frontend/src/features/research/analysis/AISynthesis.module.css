@@ -1,0 +1,212 @@
+.synthesis {
+  max-width: 720px;
+}
+
+/* ── Narrative ── */
+.narrative {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.narrative p {
+  margin-bottom: 0;
+}
+
+/* ── Section blocks ── */
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.sectionBody {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-line;
+}
+
+/* ── Bullish / Bearish factors ── */
+.factorsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .factorsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.factorBlock {
+  border: var(--border-width) solid var(--border-dim);
+  padding: 14px 16px;
+  background: var(--bg-surface);
+}
+
+.bullish {
+  border-left: 3px solid var(--status-up);
+}
+
+.bearish {
+  border-left: 3px solid var(--status-down);
+}
+
+.factorTitle {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.bullish .factorTitle {
+  color: var(--status-up);
+}
+
+.bearish .factorTitle {
+  color: var(--status-down);
+}
+
+.factorList {
+  list-style: none;
+}
+
+.factorItem {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  padding: 4px 0;
+  border-bottom: var(--border-width) solid var(--border-dim);
+}
+
+.factorItem:last-child {
+  border-bottom: none;
+}
+
+/* ── Watch levels ── */
+.levelsGrid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.levelItem {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-dim);
+  padding: 10px 16px;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.levelLabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-caption);
+}
+
+.levelValue {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Trend outlook ── */
+.trendGrid {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.trendItem {
+  border: var(--border-width) solid var(--border-dim);
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 80px;
+  background: var(--bg-surface);
+}
+
+.trendUp { border-left: 3px solid var(--status-up); }
+.trendDown { border-left: 3px solid var(--status-down); }
+.trendNeutral { border-left: 3px solid var(--border-focus); }
+
+.trendHorizon {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-caption);
+}
+
+.trendDirection {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trendStrength {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-caption);
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: 28px;
+  padding-top: 12px;
+  border-top: var(--border-width) solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.footerMeta {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-caption);
+}
+
+.reanalyzeBtn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-caption);
+  background: none;
+  border: var(--border-width) solid var(--border-dim);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.reanalyzeBtn:hover {
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+}

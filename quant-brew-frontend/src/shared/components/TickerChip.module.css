@@ -1,0 +1,15 @@
+.chip {
+  display: inline;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-gold);
+  border-bottom: 1px solid var(--accent-gold-dim);
+  cursor: pointer;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+
+.chip:hover {
+  color: var(--text-primary);
+}

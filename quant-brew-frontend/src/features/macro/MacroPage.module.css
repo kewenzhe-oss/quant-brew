@@ -1,0 +1,27 @@
+.macroLayout {
+  max-width: 900px;
+  width: 100%;
+}
+
+.legacyToggle {
+  margin-top: 48px;
+  border-top: 1px solid var(--border-dim);
+  padding-top: 24px;
+}
+
+.legacyToggle summary {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-caption);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  margin-bottom: 24px;
+}
+
+.legacyToggle summary:hover {
+  color: var(--text-secondary);
+}

@@ -1,0 +1,15 @@
+.wrapper {
+  border-left: 2px solid var(--accent-gold-dim);
+  padding-left: 16px;
+}
+
+.label {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+}

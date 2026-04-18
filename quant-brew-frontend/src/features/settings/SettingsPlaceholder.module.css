@@ -1,0 +1,18 @@
+.placeholder {
+  padding: 40px 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.hint {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-caption);
+  line-height: 1.6;
+}

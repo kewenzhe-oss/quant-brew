@@ -1,0 +1,36 @@
+.block {
+  margin-bottom: 32px;
+  padding-bottom: 28px;
+  border-bottom: var(--border-width) solid var(--border-dim);
+}
+
+.block:last-child {
+  border-bottom: none;
+}
+
+.headline {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.body {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.body p {
+  margin-bottom: 0;
+}
+
+.mentions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}

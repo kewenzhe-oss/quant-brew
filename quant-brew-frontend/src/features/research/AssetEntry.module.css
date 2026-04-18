@@ -1,0 +1,213 @@
+.root {
+  max-width: 720px;
+  padding-top: 8px;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-caption);
+  margin-bottom: 28px;
+}
+
+/* ── Search ── */
+.searchArea {
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.searchRow {
+  display: flex;
+  gap: 1px;
+  border: var(--border-width) solid var(--border-dim);
+  background: var(--border-dim);
+}
+
+.searchInput {
+  flex: 1;
+  padding: 10px 14px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: none;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--text-caption);
+}
+
+.marketSelect {
+  width: 100px;
+  padding: 10px 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.resultsList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--border-dim);
+  border-top: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.resultsHint {
+  padding: 14px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-caption);
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  text-decoration: none;
+  border-bottom: var(--border-width) solid var(--border-dim);
+  transition: background 0.1s;
+}
+
+.resultRow:last-child {
+  border-bottom: none;
+}
+
+.resultRow:hover {
+  background: var(--bg-surface);
+}
+
+.resultSymbol {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+}
+
+.resultName {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-caption);
+  margin-bottom: 6px;
+}
+
+.sectionDesc {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-caption);
+  margin-bottom: 12px;
+}
+
+/* ── Recent chips ── */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: var(--border-width) solid var(--border-dim);
+  background: var(--bg-surface);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.chip:hover {
+  background: var(--bg-elevated);
+}
+
+.chipSymbol {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-gold);
+}
+
+.chipName {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Sector grid ── */
+.sectors {
+  display: flex;
+  flex-direction: column;
+}
+
+.tickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.tickerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: var(--border-width) solid var(--border-dim);
+  background: var(--bg-surface);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.tickerCard:hover {
+  background: var(--bg-elevated);
+}
+
+.tickerSymbol {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tickerName {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+}

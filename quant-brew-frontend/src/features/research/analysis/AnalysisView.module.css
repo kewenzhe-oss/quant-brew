@@ -1,0 +1,101 @@
+/* ── Loading state ── */
+.loading {
+  max-width: 480px;
+  padding: 48px 0;
+}
+
+.loadingDot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-gold);
+  border-radius: 50%;
+  margin-bottom: 16px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.loadingTitle {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.loadingBody {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.loadingSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepDot {
+  width: 5px;
+  height: 5px;
+  background: var(--accent-gold-dim);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.stepLabel {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-caption);
+}
+
+/* ── Error state ── */
+.error {
+  max-width: 480px;
+  padding: 48px 0;
+}
+
+.errorTitle {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--status-down);
+  margin-bottom: 8px;
+}
+
+.errorBody {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.runButton {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 24px;
+  background: var(--accent-gold-dim);
+  color: var(--text-primary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.runButton:hover {
+  background: var(--accent-gold);
+  color: var(--bg-base);
+}
