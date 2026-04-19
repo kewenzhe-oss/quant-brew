@@ -1,5 +1,5 @@
 import { PageLayout } from '@/app/layouts/PageLayout';
-import { MacroJudgment } from './MacroJudgment';
+import { MacroDecisionEngine } from './MacroDecisionEngine';
 import { MacroNarrative } from './MacroNarrative';
 import { IndexGrid } from './IndexGrid';
 import { SentimentDashboard } from './SentimentDashboard';
@@ -20,10 +20,10 @@ export function MacroPage() {
 function MacroMainContent() {
   return (
     <div className={styles.macroLayout}>
-      {/* 核心 Judgment 视窗 */}
-      <MacroJudgment />
+      {/* 全新的核心决策与推演引擎 */}
+      <MacroDecisionEngine />
 
-      {/* Legacy 模块折叠保留，满足 "validation-oriented" 而非删除条件 */}
+      {/* Legacy 模块折叠保留，满⾜ "validation-oriented" 而非删除条件 */}
       <details className={styles.legacyToggle}>
         <summary>原始市场数据视角 (Raw Data Validation)</summary>
         <MacroNarrative />

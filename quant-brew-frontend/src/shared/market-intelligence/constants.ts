@@ -106,10 +106,18 @@ export const VERDICT_STANCES: readonly VerdictStance[] = [
 
 export const STANCE_LABELS: Record<VerdictStance, string> = {
   offensive: '进攻',
-  cautious_offensive: '谨慎偏多',
+  cautious_offensive: '偏多',
   neutral: '中性',
-  cautious_defensive: '谨慎偏空',
-  defensive: '防守',
+  cautious_defensive: '防守',
+  defensive: '全面防守',
+};
+
+export const STANCE_ASSET_ADVICE: Record<VerdictStance, string> = {
+  offensive: '股 ＞ 债，增配风险资产与成长风格，关注做空美债机会。',
+  cautious_offensive: '股 ＝ 债（偏股），均衡配置，防守反击心态。',
+  neutral: '维持核心资产配置，多看少动，等待多空博弈明朗。',
+  cautious_defensive: '债 ＞ 股，降低高估值风险暴露，关注防御性板块。',
+  defensive: '现金 ＝ 债 ＞ 股，全面防御，增配短债及避险资产。',
 };
 
 /* ── Market session ── */

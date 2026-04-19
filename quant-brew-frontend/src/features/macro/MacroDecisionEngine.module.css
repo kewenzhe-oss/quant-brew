@@ -1,0 +1,203 @@
+.engineLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Level 1: Master Line */
+.level1 {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.marketMicroSnapshot {
+  font-family: var(--font-number, monospace);
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.8;
+}
+
+.microIcon {
+  font-size: 14px;
+}
+
+.headline {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.assetAdviceBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.stanceBadge {
+  font-family: var(--font-ui, system-ui);
+  font-weight: 700;
+  font-size: 16px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.stanceBadge[data-stance="offensive"], .stanceBadge[data-stance="cautious_offensive"] {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.stanceBadge[data-stance="defensive"], .stanceBadge[data-stance="cautious_defensive"] {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.stanceBadge[data-stance="neutral"] {
+  background: rgba(115, 115, 115, 0.15);
+  color: #a3a3a3;
+}
+
+.adviceText {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Level 2: Grid */
+.level3 {
+  margin-top: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+/* Card styles */
+.dimCard {
+  background: var(--surface-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.dimCard.isPrimary {
+  /* Dynamically elevate. On wide screens, span 2 columns if grid allows */
+  grid-column: span 2;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 800px) {
+  .dimCard.isPrimary {
+    grid-column: span 1;
+  }
+}
+
+.dimCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dimHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dimTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dimBadges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 12px;
+  font-family: var(--font-ui, system-ui);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-secondary);
+}
+
+.badge.healthy { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.badge.pressured { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.badge.watch { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+
+.dimSummary {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Metrics inner grid */
+.metricsWrapper {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .metricsWrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metricsEmpty {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+
+.drilldownLink {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drilldownLink:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  padding: 100px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
