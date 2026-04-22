@@ -1,0 +1,178 @@
+/* CSS Module for Macro Dimension Components */
+
+/* --- Dimension Hero --- */
+.heroDecision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.coreQuestion {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.verdictBadgeWrapper {
+  display: flex;
+}
+
+.verdictBadge {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 8px;
+  letter-spacing: 0.1em;
+}
+
+.Loose, .Expanding, .Greed { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+.Neutral { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+.Tight, .Slowing, .Contracting, .Sticky, .Reaccelerating, .Fear { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+.Cooling { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+
+/* --- Hero Readouts --- */
+.heroReadouts {
+  display: flex;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.readoutCard {
+  background: rgba(255,255,255,0.03);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.primaryReadout {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.readoutLabel { font-size: 0.75rem; color: #a0a0ab; text-transform: uppercase; letter-spacing: 0.05em; }
+.readoutValue { font-size: 1.75rem; font-weight: 700; color: #fff; font-family: monospace; }
+.primaryReadout .readoutValue { font-size: 2.25rem; }
+
+/* --- AI Overview --- */
+.aiOverview {
+  background: rgba(16,185,129,0.03);
+  border-left: 2px solid #10b981;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.overviewLabel { font-size: 0.85rem; color: #10b981; text-transform: uppercase; margin-bottom: 8px; }
+.overviewText { font-size: 1.1rem; color: #ececf1; line-height: 1.6; font-weight: 300; }
+
+/* --- Chapter Layout --- */
+.chapterSection {
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.chapterIntro { display: flex; flex-direction: column; gap: 8px; }
+.chapterTitle { font-size: 2rem; color: #fff; margin: 0; font-weight: 600; }
+.chapterIntroText { font-size: 1rem; color: #8e8e93; }
+
+.chapterVerdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255,255,255,0.02);
+  padding: var(--space-lg);
+  border-radius: 8px;
+}
+.verdictIcon { color: #f59e0b; font-size: 1.5rem; }
+.verdictText { font-size: 1.25rem; color: #e4e4e7; font-weight: 500; line-height: 1.4; }
+
+.chapterThesis {
+  padding-left: 16px;
+  border-left: 2px solid rgba(255,255,255,0.2);
+}
+.thesisLabel { font-size: 0.75rem; text-transform: uppercase; color: #8e8e93; margin-bottom: 8px; }
+.thesisText { font-size: 1.05rem; color: #d1d1d6; line-height: 1.6; }
+
+/* --- Key Metrics Snapshot --- */
+.keyMetricsSnapshot { margin-top: var(--space-lg); }
+.snapshotLabel { font-size: 0.85rem; text-transform: uppercase; color: #a0a0ab; margin-bottom: 12px; }
+.snapshotGrid { display: flex; gap: var(--space-md); }
+.metricCell {
+  flex: 1;
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: var(--space-md);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.cellLabel { font-size: 0.75rem; color: #636366; }
+.cellValue { font-size: 1.5rem; color: #fff; font-family: monospace; }
+
+/* --- Chart Evidence --- */
+.chartEvidenceBlock { margin-top: var(--space-xl); }
+.chartGrid { display: grid; grid-template-columns: 1fr; gap: var(--space-xl); }
+.chartCell {
+  background: rgba(255,255,255,0.01);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: var(--space-md);
+  aspect-ratio: 16/9;
+}
+
+/* --- Metric Explainers --- */
+.metricExplainers { display: flex; flex-direction: column; gap: var(--space-md); margin-top: var(--space-lg); }
+.explainerCard {
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+.explainerHeader {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  display: flex;
+  justify-content: space-between;
+}
+.explainerLabel { font-size: 0.85rem; font-weight: 600; color: #ececf1; }
+.explainerValue { font-size: 1rem; color: #fff; font-family: monospace; }
+.explainerBody { padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
+.highlightText { color: #f59e0b; }
+.supportText { color: #10b981; }
+
+/* --- Evidence Table --- */
+.evidenceTableWrapper { margin-top: var(--space-2xl); }
+.tableTitle { font-size: 1rem; color: #ececf1; margin-bottom: 16px; }
+.evidenceTable { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.evidenceTable th { text-align: left; padding: 12px; color: #8e8e93; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.evidenceTable td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.tableMetricName { color: #ececf1; font-weight: 500; }
+.tableMetricValue { color: #fff; font-family: monospace; }
+.tableMetricDesc { color: #a0a0ab; }
+.tableBadgeProxy { background: rgba(245,158,11,0.2); color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; }
+.tableBadgeReal { background: rgba(16,185,129,0.2); color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; }
+
+/* --- Risk Watch --- */
+.riskWatch { margin-top: var(--space-2xl); background: rgba(239,68,68,0.05); border-left: 2px solid #ef4444; padding: var(--space-lg); }
+.riskHeader { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.riskTitle { color: #ef4444; font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+.riskList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none; /* override default */
+  padding: 0;
+  margin: 0;
+}
+.riskList li { font-size: 0.9rem; color: #fca5a5; line-height: 1.5; }
+.riskList strong { color: #ef4444; }

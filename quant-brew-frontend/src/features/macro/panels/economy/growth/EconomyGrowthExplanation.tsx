@@ -1,4 +1,4 @@
-import styles from '../../../PanelDetailPage.module.css';
+import styles from '../../../components/Components.module.css';
 
 export function EconomyGrowthExplanation() {
 
