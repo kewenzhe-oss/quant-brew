@@ -1,6 +1,4 @@
-import type { BreakdownOutlineNode } from '@/shared/market-intelligence/dimensionDetail';
 import styles from './BreakdownSection.module.css';
-
 interface Props {
   outline: { id: string; title: string; question: string }[];
 }

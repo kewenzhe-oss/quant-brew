@@ -8,12 +8,11 @@ import {
   STATUS_LABELS,
   SIGNAL_LABELS,
   CHANGE_LABELS,
-  DOMAIN_ROUTE_MAP,
 } from '@/shared/market-intelligence/constants';
 import { SemanticMetricBar } from './components/SemanticMetricBar';
 import { ForwardAnchors } from './components/ForwardAnchors';
 import styles from './MacroDecisionEngine.module.css';
-import type { DimensionAssessment, DimensionKey } from '@/shared/market-intelligence/types';
+import type { DimensionAssessment, DimensionKey, VerdictStance } from '@/shared/market-intelligence/types';
 
 /* ── Elevation weight for sorting cards ── */
 function elevationWeight(dim: DimensionAssessment): number {
@@ -177,7 +176,7 @@ function MacroVerdictStrip({ items }: { items: DimStripItem[] }) {
   );
 }
 
-function MacroMasterNarrative({ stance, verdict }: { stance: string, verdict: string }) {
+function MacroMasterNarrative({ stance, verdict }: { stance: VerdictStance, verdict: string }) {
   return (
     <div className={styles.verdictBlock}>
       <div className={styles.stancePill} data-stance={stance}>
@@ -276,7 +275,7 @@ function DomainEntryCard({ dimKey, dim, summary, isPrimary }: DimensionCardProps
       </p>
 
       {/* Drilldown link → Layer 2 domain page */}
-      <Link to={`/macro/${domainUrlKey(dimKey)}`} className={styles.drilldownLink}>
+      <Link to={`/macro/${factorUrlKey(dimKey)}`} className={styles.drilldownLink}>
         查看{DIMENSION_LABELS[dimKey]}详情 ▸
       </Link>
 

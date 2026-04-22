@@ -30,6 +30,7 @@ export function DimensionSectionGroup({ sections }: DimensionSectionGroupProps) 
           {sec.chartMetricKey !== null && (
             <div className={styles.chartWrap}>
               <DimensionChart
+                metricKey={sec.chartMetricKey}
                 label={sec.chartLabel}
                 series={null}  // null until real history API is connected
               />
