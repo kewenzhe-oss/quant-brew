@@ -29,9 +29,9 @@ export function DimensionModuleGroup({ modules }: Props) {
 }
 
 function ModuleCard({ mod }: { mod: DimensionModule }) {
-  // Slice 2.1 strong barrier: ONLY us10y is allowed to hit the real network, 
+  // Slice 2.2 strong barrier: ONLY us10y and vix are allowed to hit the real network, 
   // everything else falls back to local empty placeholder
-  const allowedKey = mod.chartMetricKey === 'us10y' ? 'us10y' : null;
+  const allowedKey = ['us10y', 'vix'].includes(mod.chartMetricKey ?? '') ? mod.chartMetricKey : null;
   const { series, isLoading } = useMacroSeries(allowedKey);
 
   return (
