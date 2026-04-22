@@ -56,10 +56,9 @@ function sentimentStripLabel(dim: DimensionAssessment): string {
 }
 
 /* ── Resolve URL key from internal DimensionKey ── */
-function domainUrlKey(key: DimensionKey): string {
-  // Find the DOMAIN_ROUTE_MAP entry whose .key matches
-  const entry = Object.values(DOMAIN_ROUTE_MAP).find((d) => d.key === key);
-  return entry?.urlKey ?? key;
+function factorUrlKey(key: DimensionKey): string {
+  if (key === 'inflation_rates') return 'inflationRates';
+  return key;
 }
 
 /* ── Four-dimension strip ── */
@@ -84,7 +83,7 @@ function buildStripItems(
       label: DIMENSION_LABELS[key],
       stripLabel,
       color: STATUS_COLOR[dim.status] ?? '#a3a3a3',
-      url: `/macro/${domainUrlKey(key)}`,
+      url: `/macro/${factorUrlKey(key)}`,
     };
   });
 }

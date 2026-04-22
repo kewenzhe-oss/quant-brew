@@ -1,0 +1,87 @@
+.container {
+  padding: var(--space-xl) var(--space-4xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xl);
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-md);
+}
+
+.separator {
+  color: var(--color-border-subtle);
+}
+
+.current {
+  color: var(--color-text-primary);
+}
+
+.title {
+  font-size: var(--text-5xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+/* Zone Placeholders for Slice 3.1 */
+.zonePlaceholder {
+  padding: var(--space-3xl);
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-elevated);
+  position: relative;
+}
+
+.zoneId {
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  background: var(--color-bg-primary);
+  padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.1em;
+}
+
+.zonePlaceholder h2 {
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.zonePlaceholder p {
+  color: var(--color-text-secondary);
+}
+
+.aiStructure {
+  margin-top: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.aiStructure p {
+  font-size: var(--text-sm);
+  padding: var(--space-md);
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+}
+
+.aiStructure strong {
+  display: block;
+  margin-bottom: var(--space-xs);
+  color: var(--color-text-primary);
+}
