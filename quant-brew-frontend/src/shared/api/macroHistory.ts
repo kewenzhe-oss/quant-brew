@@ -20,6 +20,9 @@ const BACKEND_SERIES_ALIAS: Record<string, string> = {
   'rrp_balance': 'rrp',
   'industrial_production_yoy': 'industrial_production',
   'cpi_yoy': 'cpi_yoy',
+  // Economy Proxy overrides
+  'consumer_confidence': 'umcsent',
+  'leading_economic_index': 'usslind',
 };
 
 export const historyApi = {

@@ -181,6 +181,10 @@ export interface FedLiquidityData {
   tga: number | null;
   /** RRPONTSYD — Overnight Reverse Repo (billions USD) */
   rrp: number | null;
+  /** WRESBAL — Bank Reserves (billions USD) */
+  wresbal?: number | null;
+  /** NFCI — Financial Conditions Index */
+  nfci?: number | null;
   /** WALCL − TGA − RRP (billions USD) — null if any component missing */
   net_liquidity: number | null;
   data_quality: 'real' | 'partial' | 'unavailable';

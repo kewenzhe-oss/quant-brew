@@ -412,6 +412,9 @@ _SERIES_WHITELIST: dict[str, dict] = {
     "rrp":      {"ticker": "RRPONTSYD", "label": "RRP Balance",      "source": "fred", "unit": "$B"},
     "wresbal":  {"ticker": "WRESBAL",   "label": "Bank Reserves",    "source": "fred", "unit": "$B"},
     "nfci":     {"ticker": "NFCI",      "label": "Chicago Fed NFCI", "source": "fred", "unit": "index"},
+    "umcsent":  {"ticker": "UMCSENT",   "label": "UMich Consumer Sentiment", "source": "fred", "unit": "index"},
+    "usslind":  {"ticker": "USSLIND",   "label": "Philly Fed State Leading Index", "source": "fred", "unit": "index"},
+    
     # Computed Synthetic Series
     "us_net_liquidity": {"ticker": "SYNTH_LIQ", "label": "US Net Liquidity", "source": "synthetic", "unit": "$B"},
 }

@@ -104,19 +104,13 @@ def _fetch_fred_series(ticker_symbol: str, label: str) -> float | None:
 
 def fetch_fed_liquidity() -> Dict[str, Any]:
     """
-    Fetch WALCL, TGA, RRP and compute net US liquidity.
-
-    Returns a dict with:
-      walcl        : float | None   (billions USD)
-      tga          : float | None   (billions USD)
-      rrp          : float | None   (billions USD)
-      net_liquidity: float | None   (WALCL - TGA - RRP, billions USD)
-      data_quality : 'real' | 'partial' | 'unavailable'
-      source       : str
+    Fetch WALCL, TGA, RRP, WRESBAL, NFCI and compute net US liquidity.
     """
-    walcl = _fetch_fred_series(_WALCL_TICKER, "Fed Assets")
-    tga   = _fetch_fred_series(_TGA_TICKER,   "Treasury General Account")
-    rrp   = _fetch_fred_series(_RRP_TICKER,   "Overnight RRP")
+    walcl   = _fetch_fred_series(_WALCL_TICKER, "Fed Assets")
+    tga     = _fetch_fred_series(_TGA_TICKER,   "Treasury General Account")
+    rrp     = _fetch_fred_series(_RRP_TICKER,   "Overnight RRP")
+    wresbal = _fetch_fred_series("WRESBAL",     "Bank Reserves")
+    nfci    = _fetch_fred_series("NFCI",        "Financial Conditions Index")
 
     available = sum(x is not None for x in [walcl, tga, rrp])
 
@@ -124,7 +118,6 @@ def fetch_fed_liquidity() -> Dict[str, Any]:
         net = walcl - tga - rrp
         quality = "real"
     elif available > 0:
-        # Partial: compute net with available components, treat missing as 0
         net = (walcl or 0.0) - (tga or 0.0) - (rrp or 0.0)
         quality = "partial"
     else:
@@ -132,10 +125,12 @@ def fetch_fed_liquidity() -> Dict[str, Any]:
         quality = "unavailable"
 
     logger.info(
-        "Fed liquidity: WALCL=%s, TGA=%s, RRP=%s → Net=%s (%s)",
+        "Fed liquidity: WALCL=%s, TGA=%s, RRP=%s, WRESBAL=%s, NFCI=%s → Net=%s (%s)",
         f"{walcl:.1f}" if walcl is not None else "None",
         f"{tga:.1f}"   if tga   is not None else "None",
         f"{rrp:.1f}"   if rrp   is not None else "None",
+        f"{wresbal:.1f}" if wresbal is not None else "None",
+        f"{nfci:.2f}"  if nfci  is not None else "None",
         f"{net:.1f}"   if net   is not None else "None",
         quality,
     )
@@ -144,7 +139,9 @@ def fetch_fed_liquidity() -> Dict[str, Any]:
         "walcl":         round(walcl, 1) if walcl is not None else None,
         "tga":           round(tga,   1) if tga   is not None else None,
         "rrp":           round(rrp,   1) if rrp   is not None else None,
+        "wresbal":       round(wresbal, 1) if wresbal is not None else None,
+        "nfci":          round(nfci, 2) if nfci is not None else None,
         "net_liquidity": round(net,   1) if net   is not None else None,
         "data_quality":  quality,
-        "source":        "FRED (yfinance → direct CSV fallback) WALCL/WTREGEN/RRPONTSYD",
+        "source":        "FRED API Base",
     }

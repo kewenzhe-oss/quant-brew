@@ -85,3 +85,14 @@
   margin-bottom: var(--space-xs);
   color: var(--color-text-primary);
 }
+
+.proxyBadge {
+  font-size: 0.75em;
+  font-weight: 600;
+  background: rgba(255, 100, 0, 0.15);
+  color: #ff8800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: text-top;
+}

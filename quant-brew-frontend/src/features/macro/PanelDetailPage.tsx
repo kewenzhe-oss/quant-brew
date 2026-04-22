@@ -17,8 +17,16 @@ function useSnapshotData(factorKey: string, metricKey: string) {
     if (metricKey === 'fed_balance_sheet') return sentiment.fed_liquidity?.walcl;
     if (metricKey === 'tga_balance') return sentiment.fed_liquidity?.tga;
     if (metricKey === 'rrp_balance') return sentiment.fed_liquidity?.rrp;
+    if (metricKey === 'bank_reserves') return sentiment.fed_liquidity?.wresbal;
     if (metricKey === 'dollar_index') return sentiment.dxy?.value;
+    if (metricKey === 'financial_conditions_index') return sentiment.fed_liquidity?.nfci;
     if (metricKey === 'us10y_yield') return sentiment.us10y?.value;
+  }
+  
+  // Specific Economy resolutions
+  if (factorKey === 'economy') {
+    // Phase 3 Backend Expansion for Economy (gdp, retail_sales, proxy values) is pending real JSON payloads
+    // Returns null to maintain the strict [Pending] boundary structure
   }
   
   return null;
@@ -70,7 +78,15 @@ export function PanelDetailPage() {
         <h2 className={styles.sectionTitle}>Key Metrics Snapshot</h2>
         <div className={styles.snapshotGrid}>
           {contract.snapshots.map(snap => (
-            <SnapshotWrapper key={snap.key} factor={factor} metricKey={snap.key} label={snap.label} desc={snap.description} />
+            <SnapshotWrapper 
+              key={snap.key} 
+              factor={factor} 
+              metricKey={snap.key} 
+              label={snap.label} 
+              desc={snap.description} 
+              isProxy={snap.isProxy}
+              targetSource={snap.targetSource}
+            />
           ))}
         </div>
       </section>
@@ -80,7 +96,13 @@ export function PanelDetailPage() {
         <h2 className={styles.sectionTitle}>Chart Evidence</h2>
         <div className={styles.chartGrid}>
           {contract.charts.map(chart => (
-            <ChartWrapper key={chart.key} metricKey={chart.key} label={chart.title} />
+            <ChartWrapper 
+              key={chart.key} 
+              metricKey={chart.key} 
+              label={chart.title} 
+              isProxy={chart.isProxy} 
+              targetSource={chart.targetSource} 
+            />
           ))}
         </div>
       </section>
@@ -105,11 +127,18 @@ export function PanelDetailPage() {
 }
 
 // Wrapper for Snapshot cell
-function SnapshotWrapper({ factor, metricKey, label, desc }: { factor: string, metricKey: string, label: string, desc: string }) {
+function SnapshotWrapper({ 
+  factor, metricKey, label, desc, isProxy, targetSource 
+}: { 
+  factor: string, metricKey: string, label: string, desc: string, isProxy?: boolean, targetSource?: string 
+}) {
   const value = useSnapshotData(factor, metricKey);
   return (
     <div className={styles.snapshotCard}>
-      <div className={styles.snapLabel}>{label}</div>
+      <div className={styles.snapLabel}>
+        {label}
+        {isProxy && <span className={styles.proxyBadge} title={`Data substituted using ${targetSource}`}>PROXY: {targetSource}</span>}
+      </div>
       <div className={styles.snapValue}>{value !== null && value !== undefined ? value : '[Pending]'}</div>
       <div className={styles.snapDesc}>{desc}</div>
     </div>
@@ -117,11 +146,17 @@ function SnapshotWrapper({ factor, metricKey, label, desc }: { factor: string, m
 }
 
 // Dedicated wrapper to enforce isolation barriers per chart loop
-function ChartWrapper({ metricKey, label }: { metricKey: string, label: string }) {
+function ChartWrapper({ 
+  metricKey, label, isProxy, targetSource 
+}: { 
+  metricKey: string, label: string, isProxy?: boolean, targetSource?: string 
+}) {
   const { series, isLoading } = useMacroSeries(metricKey);
+  const displayLabel = isProxy ? `${label} [PROXY: ${targetSource}]` : label;
+  
   return (
     <div className={styles.chartItem}>
-      <DimensionChart metricKey={metricKey} label={label} series={series} isLoading={isLoading} />
+      <DimensionChart metricKey={metricKey} label={displayLabel} series={series} isLoading={isLoading} />
     </div>
   );
 }
