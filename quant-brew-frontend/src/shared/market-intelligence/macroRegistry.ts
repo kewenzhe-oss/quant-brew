@@ -54,7 +54,7 @@ export interface PanelContract {
   factor: FactorType;
   title: string;
   snapshots: { key: string; label: string; description: string; isProxy?: boolean; targetSource?: string }[];
-  charts: { key: string; title: string; description: string; isProxy?: boolean; targetSource?: string }[];
+  charts: { key: string; title: string; description: string; isProxy?: boolean; targetSource?: string; takeaway?: string }[];
   ExplanationComponent?: React.ComponentType;
 }
 
@@ -103,12 +103,12 @@ export const ECONOMY_GROWTH_PANEL: PanelContract = {
     { key: 'recession_probability', label: '衰退概率', description: '依据历史指标推算的硬着陆概率' },
   ],
   charts: [
-    { key: 'ism_manufacturing', title: 'ISM 制造业 PMI', description: '制造业扩张/收缩分界在50' },
-    { key: 'ism_services', title: 'ISM 服务业 PMI', description: '服务业作为主引擎的韧性' },
-    { key: 'industrial_production_yoy', title: '工业产出 YoY', description: '工业产能趋势变化' },
-    { key: 'consumer_confidence', title: '消费者信心指数', description: '代理指标 UMich 呈现的情绪走势', isProxy: true, targetSource: 'UMich (UMCSENT)' },
-    { key: 'leading_economic_index', title: '领先经济综合指数', description: '经济前置景气观测', isProxy: true, targetSource: 'Philly Fed (USSLIND)' },
-    { key: 'recession_probability', title: '衰退概率模型', description: '全网衰退概率统计走势' },
+    { key: 'ism_manufacturing', title: 'ISM 制造业 PMI', description: '制造业扩张/收缩分界在50', takeaway: '制造业持续在荣枯线下方承压，复苏动能受限。' },
+    { key: 'ism_services', title: 'ISM 服务业 PMI', description: '服务业作为主引擎的韧性', takeaway: '服务业保持强劲扩张，支撑经济免于直接衰退。' },
+    { key: 'industrial_production_yoy', title: '工业产出 YoY', description: '工业产能趋势变化', takeaway: '工业产能同比增速走弱，企业端投产意愿低迷。' },
+    { key: 'consumer_confidence', title: '消费者信心指数', description: '代理指标 UMich 呈现的情绪走势', isProxy: true, targetSource: 'UMich (UMCSENT)', takeaway: '消费者信心在高利率环境下小幅回暖，但长期仍不乐观。' },
+    { key: 'leading_economic_index', title: '领先经济综合指数', description: '经济前置景气观测', isProxy: true, targetSource: 'Philly Fed (USSLIND)', takeaway: '费城联储综合前瞻指标深度下探，领先验证衰退信号。' },
+    { key: 'recession_probability', title: '衰退概率模型', description: '全网衰退概率统计走势', takeaway: '模型测算硬着陆风险未完全消除，目前处于警戒高位。' },
   ]
 };
 

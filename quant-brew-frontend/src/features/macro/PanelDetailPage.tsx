@@ -63,26 +63,28 @@ export function PanelDetailPage() {
 
   const main = (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.breadcrumbs}>
-          <span>{FACTOR_LABELS[factor]}</span>
-          <span className={styles.separator}>/</span>
-          <span className={styles.current}>{PANEL_LABELS[panelKey]}</span>
-        </div>
-        <h1 className={styles.title}>{PANEL_LABELS[panelKey]}</h1>
-      </header>
+      <div className={styles.breadcrumbs}>
+        <span>{FACTOR_LABELS[factor]}</span>
+        <span className={styles.separator}>/</span>
+        <span className={styles.current}>{PANEL_LABELS[panelKey]}</span>
+      </div>
 
-      {/* ZONE 1: Verdict / Regime */}
-      <section className={styles.zoneVerdict}>
-        <div className={styles.verdictCard}>
-          <span className={styles.zoneId}>ZONE 1: VERDICT</span>
-          <h2>Quantitative Assessment</h2>
-          <p className={styles.pendingText}>[Awaiting snapshot assessment mapping]</p>
+      {/* ZONE 1: Panel Hero */}
+      <section className={styles.heroZone}>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>{PANEL_LABELS[panelKey]}</h1>
+          <span className={styles.regimeBadge}>[Regime: 观察期]</span>
+          <span className={styles.regimeBadge}>[Quality: {contract.snapshots.some(s => s.isProxy) ? 'Proxy-Assisted' : 'Real'}]</span>
         </div>
+        <p className={styles.heroConclusion}>
+          {factor === 'economy' 
+            ? '当前服务业维持韧性与消费托底，但制造业持续处于收缩区间，叠加领先指标的下探预警，跨周期动能正向放缓象限偏移。' 
+            : '[定量结论摘要待生成]'}
+        </p>
       </section>
 
       {/* ZONE 2: Snapshot Metrics */}
-      <section className={styles.zoneSnapshot}>
+      <section>
         <h2 className={styles.sectionTitle}>Key Metrics Snapshot</h2>
         <div className={styles.snapshotGrid}>
           {contract.snapshots.map(snap => (
@@ -100,7 +102,7 @@ export function PanelDetailPage() {
       </section>
 
       {/* ZONE 3: Chart Evidence */}
-      <section className={styles.zoneCharts}>
+      <section>
         <h2 className={styles.sectionTitle}>Chart Evidence</h2>
         <div className={styles.chartGrid}>
           {contract.charts.map(chart => (
@@ -109,22 +111,32 @@ export function PanelDetailPage() {
               metricKey={chart.key} 
               label={chart.title} 
               isProxy={chart.isProxy} 
-              targetSource={chart.targetSource} 
+              targetSource={chart.targetSource}
+              takeaway={chart.takeaway}
             />
           ))}
         </div>
       </section>
 
-      {/* ZONE 4: AI Explanation */}
-      <section className={styles.zoneAi}>
-        <h2 className={styles.sectionTitle}>AI Synthesized Regime</h2>
+      {/* ZONE 4/5: AI Explanation & Risk Watch */}
+      <section>
+        <h2 className={styles.sectionTitle}>AI Synthesized Interpretation</h2>
         {contract.ExplanationComponent ? (
           <contract.ExplanationComponent />
         ) : (
-          <div className={styles.aiStructure}>
-            <p><strong>当前发生了什么 (Current State):</strong> [Pending narrative integration]</p>
-            <p><strong>趋势如何演变 (Trend Evolution):</strong> [Pending narrative integration]</p>
-            <p><strong>这对市场意味着什么 (Market Implication):</strong> [Pending narrative integration]</p>
+          <div className={styles.aiContainer}>
+            <div className={styles.aiBlock}>
+              <h3>What's Happening</h3>
+              <p>[Pending narrative integration]</p>
+            </div>
+            <div className={styles.aiBlock}>
+              <h3>Trend Evolution</h3>
+              <p>[Pending narrative integration]</p>
+            </div>
+            <div className={styles.aiBlock}>
+              <h3>Market Implication</h3>
+              <p>[Pending narrative integration]</p>
+            </div>
           </div>
         )}
       </section>
@@ -141,13 +153,19 @@ function SnapshotWrapper({
   factor: string, metricKey: string, label: string, desc: string, isProxy?: boolean, targetSource?: string 
 }) {
   const value = useSnapshotData(factor, metricKey);
+  const isPending = value === null || value === undefined;
+  
   return (
     <div className={styles.snapshotCard}>
       <div className={styles.snapLabel}>
         {label}
         {isProxy && <span className={styles.proxyBadge} title={`Data substituted using ${targetSource}`}>PROXY: {targetSource}</span>}
       </div>
-      <div className={styles.snapValue}>{value !== null && value !== undefined ? value : '[Pending]'}</div>
+      {isPending ? (
+        <div className={styles.snapValuePending}>[Awaiting Data]</div>
+      ) : (
+        <div className={styles.snapValue}>{value}</div>
+      )}
       <div className={styles.snapDesc}>{desc}</div>
     </div>
   );
@@ -155,16 +173,23 @@ function SnapshotWrapper({
 
 // Dedicated wrapper to enforce isolation barriers per chart loop
 function ChartWrapper({ 
-  metricKey, label, isProxy, targetSource 
+  metricKey, label, isProxy, targetSource, takeaway 
 }: { 
-  metricKey: string, label: string, isProxy?: boolean, targetSource?: string 
+  metricKey: string, label: string, isProxy?: boolean, targetSource?: string, takeaway?: string
 }) {
   const { series, isLoading } = useMacroSeries(metricKey);
   const displayLabel = isProxy ? `${label} [PROXY: ${targetSource}]` : label;
   
   return (
-    <div className={styles.chartItem}>
-      <DimensionChart metricKey={metricKey} label={displayLabel} series={series} isLoading={isLoading} />
+    <div className={styles.chartCard}>
+      {takeaway && (
+        <div className={styles.chartTakeaway}>
+          <strong>✦ Takeaway:</strong> {takeaway}
+        </div>
+      )}
+      <div className={styles.chartBody}>
+        <DimensionChart metricKey={metricKey} label={displayLabel} series={series} isLoading={isLoading} />
+      </div>
     </div>
   );
 }
