@@ -53,14 +53,18 @@ export interface PanelContract {
   id: string;
   factor: FactorType;
   title: string;
-  snapshots: PanelSnapshotConfig[];
-  charts: PanelChartConfig[];
+  snapshots: { key: string; label: string; description: string }[];
+  charts: { key: string; title: string; description: string }[];
+  ExplanationComponent?: React.ComponentType;
 }
+
+import { UsLiquidityExplanation } from '@/features/macro/panels/liquidity/us/UsLiquidityExplanation';
 
 export const US_LIQUIDITY_PANEL: PanelContract = {
   id: 'us',
   factor: 'liquidity',
-  title: '美国流动性',
+  title: '美国流动性监控 (US Liquidity)',
+  ExplanationComponent: UsLiquidityExplanation,
   snapshots: [
     { key: 'us_net_liquidity', label: '美国净流动性', description: 'WALCL − TGA − RRP' },
     { key: 'fed_balance_sheet', label: '美联储总资产', description: '美联储资产负债表规模' },

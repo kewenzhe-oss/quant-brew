@@ -352,25 +352,68 @@ def refresh_data():
 #
 # Whitelist of metric keys → yfinance tickers.
 # Only read-only public market/macro data. No auth needed.
+import datetime
+import requests
+import pandas as pd
+
+_FRED_CSV_BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
+_FRED_HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; QuantBrew/1.0)"}
+
+def _fetch_fred_history(series_id: str) -> list[dict]:
+    """Fetch 1-year history from FRED CSV API."""
+    url = f"{_FRED_CSV_BASE}{series_id}"
+    resp = requests.get(url, timeout=20, headers=_FRED_HEADERS)
+    if resp.status_code != 200:
+        return []
+
+    lines = resp.text.strip().split("\n")
+    # Date limit: 1 year ago
+    cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+    
+    points = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("DATE") or line.endswith("."):
+            continue
+        parts = line.split(",")
+        if len(parts) == 2:
+            date_str = parts[0].strip()
+            if date_str >= cutoff_date:
+                try:
+                    val = float(parts[1].strip())
+                    points.append({"time": date_str, "value": round(val, 4)})
+                except ValueError:
+                    pass
+    return points
+
 #
 _SERIES_WHITELIST: dict[str, dict] = {
-    "us10y":        {"ticker": "^TNX",       "label": "10Y 美债收益率",    "unit": "%"},
-    "us2y":         {"ticker": "^IRX",       "label": "2Y 美债收益率",    "unit": "%"},
-    "vix":          {"ticker": "^VIX",       "label": "VIX 隐含波动率",  "unit": "index"},
-    "dxy":          {"ticker": "DX-Y.NYB",   "label": "美元指数 DXY",    "unit": "index"},
-    "spx":          {"ticker": "^GSPC",      "label": "S&P 500",         "unit": "pts"},
-    "gold":         {"ticker": "GC=F",       "label": "黄金期货",        "unit": "USD/oz"},
+    "us10y":        {"ticker": "^TNX",       "label": "10Y 美债收益率",    "source": "yfinance", "unit": "%"},
+    "us2y":         {"ticker": "^IRX",       "label": "2Y 美债收益率",    "source": "yfinance", "unit": "%"},
+    "vix":          {"ticker": "^VIX",       "label": "VIX 隐含波动率",  "source": "yfinance", "unit": "index"},
+    "dxy":          {"ticker": "DX-Y.NYB",   "label": "美元指数 DXY",    "source": "yfinance", "unit": "index"},
+    "spx":          {"ticker": "^GSPC",      "label": "S&P 500",         "source": "yfinance", "unit": "pts"},
+    "gold":         {"ticker": "GC=F",       "label": "黄金期货",        "source": "yfinance", "unit": "USD/oz"},
     # FRED monthly series — Inflation
-    "cpi_yoy":      {"ticker": "CPIAUCSL",   "label": "CPI (CPIAUCSL)",  "unit": "index"},
-    "pce_core_yoy": {"ticker": "PCEPILFE",   "label": "Core PCE (PCEPILFE)", "unit": "index"},
+    "cpi_yoy":      {"ticker": "CPIAUCSL",   "label": "CPI (CPIAUCSL)",  "source": "yfinance", "unit": "index"},
+    "pce_core_yoy": {"ticker": "PCEPILFE",   "label": "Core PCE (PCEPILFE)", "source": "yfinance", "unit": "index"},
     # FRED series — Employment
-    "unemployment_rate":   {"ticker": "UNRATE",   "label": "失业率 UNRATE",      "unit": "%"},
-    "initial_claims":      {"ticker": "IC4WSA",   "label": "初请失业金 IC4WSA", "unit": "K"},
-    "nonfarm_payrolls":    {"ticker": "PAYEMS",   "label": "非农就业 PAYEMS",    "unit": "K"},
+    "unemployment_rate":   {"ticker": "UNRATE",   "label": "失业率 UNRATE",      "source": "yfinance", "unit": "%"},
+    "initial_claims":      {"ticker": "IC4WSA",   "label": "初请失业金 IC4WSA", "source": "yfinance", "unit": "K"},
+    "nonfarm_payrolls":    {"ticker": "PAYEMS",   "label": "非农就业 PAYEMS",    "source": "yfinance", "unit": "K"},
     # FRED series — Growth
-    "ism_manufacturing":   {"ticker": "ISMMAN",   "label": "ISM 制造业 PMI",    "unit": "index"},
-    "ism_services":        {"ticker": "ISMSVC",   "label": "ISM 服务业 PMI",    "unit": "index"},
-    "industrial_production": {"ticker": "INDPRO", "label": "工业产出 INDPRO",   "unit": "index"},
+    "ism_manufacturing":   {"ticker": "ISMMAN",   "label": "ISM 制造业 PMI",    "source": "yfinance", "unit": "index"},
+    "ism_services":        {"ticker": "ISMSVC",   "label": "ISM 服务业 PMI",    "source": "yfinance", "unit": "index"},
+    "industrial_production": {"ticker": "INDPRO", "label": "工业产出 INDPRO",   "source": "yfinance", "unit": "index"},
+    
+    # FRED direct series - Liquidity
+    "walcl":    {"ticker": "WALCL",     "label": "Fed Total Assets", "source": "fred", "unit": "$B"},
+    "tga":      {"ticker": "WTREGEN",   "label": "TGA Balance",      "source": "fred", "unit": "$B"},
+    "rrp":      {"ticker": "RRPONTSYD", "label": "RRP Balance",      "source": "fred", "unit": "$B"},
+    "wresbal":  {"ticker": "WRESBAL",   "label": "Bank Reserves",    "source": "fred", "unit": "$B"},
+    "nfci":     {"ticker": "NFCI",      "label": "Chicago Fed NFCI", "source": "fred", "unit": "index"},
+    # Computed Synthetic Series
+    "us_net_liquidity": {"ticker": "SYNTH_LIQ", "label": "US Net Liquidity", "source": "synthetic", "unit": "$B"},
 }
 
 
@@ -401,25 +444,50 @@ def get_macro_series(metric_key: str):
     ticker_sym = cfg["ticker"]
 
     try:
-        import yfinance as yf
-        ticker = yf.Ticker(ticker_sym)
-        hist = ticker.history(period="1y", interval="1d")
-
-        if hist is None or hist.empty:
-            return jsonify({
-                "code": 0,
-                "msg": f"No history available for {ticker_sym}",
-                "data": None,
-            }), 503
-
-        # Build ChartDataPoint list — {time: YYYY-MM-DD, value: float}
+        source = cfg.get("source", "yfinance")
         points = []
-        for ts, row in hist.iterrows():
-            date_str = ts.strftime("%Y-%m-%d")
-            close_val = float(row["Close"])
-            if close_val != close_val:  # NaN guard
-                continue
-            points.append({"time": date_str, "value": round(close_val, 4)})
+
+        if source == "fred":
+            points = _fetch_fred_history(ticker_sym)
+        elif source == "synthetic" and metric_key == "us_net_liquidity":
+            walcl_pts = _fetch_fred_history("WALCL")
+            tga_pts = _fetch_fred_history("WTREGEN")
+            rrp_pts = _fetch_fred_history("RRPONTSYD")
+
+            # Dictionary by date
+            walcl_map = {p["time"]: p["value"] for p in walcl_pts}
+            tga_map = {p["time"]: p["value"] for p in tga_pts}
+            rrp_map = {p["time"]: p["value"] for p in rrp_pts}
+
+            dates = sorted(list(set(walcl_map.keys()) | set(tga_map.keys()) | set(rrp_map.keys())))
+            for d in dates:
+                w = walcl_map.get(d, 0.0)
+                t = tga_map.get(d, 0.0)
+                r = rrp_map.get(d, 0.0)
+                if w > 0: # Only compute when we have core balance sheet data
+                    points.append({"time": d, "value": round(w - t - r, 4)})
+        else:
+            # Fallback to yfinance
+            import yfinance as yf
+            ticker = yf.Ticker(ticker_sym)
+            hist = ticker.history(period="1y", interval="1d")
+
+            if hist is None or hist.empty:
+                return jsonify({
+                    "code": 0,
+                    "msg": f"No history available for {ticker_sym}",
+                    "data": None,
+                }), 503
+
+            for ts, row in hist.iterrows():
+                date_str = ts.strftime("%Y-%m-%d")
+                close_val = float(row["Close"])
+                if close_val != close_val:  # NaN guard
+                    continue
+                points.append({"time": date_str, "value": round(close_val, 4)})
+
+        if not points:
+             return jsonify({"code": 0, "msg": f"No history available for {metric_key}", "data": None}), 503
 
         result = {
             "metric": metric_key,

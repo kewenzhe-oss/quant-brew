@@ -3,7 +3,26 @@ import { PageLayout } from '@/app/layouts/PageLayout';
 import { PANELS, FACTOR_LABELS, PANEL_LABELS, FactorType, FACTORS, CONTRACT_REGISTRY } from '@/shared/market-intelligence/macroRegistry';
 import { DimensionChart } from '@/features/macro/DimensionChart';
 import { useMacroSeries } from '@/shared/hooks/useMacroSeries';
+import { useSentiment } from '@/shared/hooks/useSentiment';
 import styles from './PanelDetailPage.module.css';
+
+// Local resolver for generic panel snapshot data
+function useSnapshotData(factorKey: string, metricKey: string) {
+  const { data: sentiment } = useSentiment();
+  
+  if (!sentiment) return null;
+  // Specific Liquidity resolutions
+  if (factorKey === 'liquidity') {
+    if (metricKey === 'us_net_liquidity') return sentiment.fed_liquidity?.net_liquidity;
+    if (metricKey === 'fed_balance_sheet') return sentiment.fed_liquidity?.walcl;
+    if (metricKey === 'tga_balance') return sentiment.fed_liquidity?.tga;
+    if (metricKey === 'rrp_balance') return sentiment.fed_liquidity?.rrp;
+    if (metricKey === 'dollar_index') return sentiment.dxy?.value;
+    if (metricKey === 'us10y_yield') return sentiment.us10y?.value;
+  }
+  
+  return null;
+}
 
 export function PanelDetailPage() {
   const { factorKey, panelKey } = useParams<{ factorKey: string; panelKey: string }>();
@@ -51,11 +70,7 @@ export function PanelDetailPage() {
         <h2 className={styles.sectionTitle}>Key Metrics Snapshot</h2>
         <div className={styles.snapshotGrid}>
           {contract.snapshots.map(snap => (
-            <div key={snap.key} className={styles.snapshotCard}>
-              <div className={styles.snapLabel}>{snap.label}</div>
-              <div className={styles.snapValue}>[Pending]</div>
-              <div className={styles.snapDesc}>{snap.description}</div>
-            </div>
+            <SnapshotWrapper key={snap.key} factor={factor} metricKey={snap.key} label={snap.label} desc={snap.description} />
           ))}
         </div>
       </section>
@@ -73,16 +88,32 @@ export function PanelDetailPage() {
       {/* ZONE 4: AI Explanation */}
       <section className={styles.zoneAi}>
         <h2 className={styles.sectionTitle}>AI Synthesized Regime</h2>
-        <div className={styles.aiStructure}>
-          <p><strong>当前发生了什么 (Current State):</strong> [Pending narrative integration]</p>
-          <p><strong>趋势如何演变 (Trend Evolution):</strong> [Pending narrative integration]</p>
-          <p><strong>这对市场意味着什么 (Market Implication):</strong> [Pending narrative integration]</p>
-        </div>
+        {contract.ExplanationComponent ? (
+          <contract.ExplanationComponent />
+        ) : (
+          <div className={styles.aiStructure}>
+            <p><strong>当前发生了什么 (Current State):</strong> [Pending narrative integration]</p>
+            <p><strong>趋势如何演变 (Trend Evolution):</strong> [Pending narrative integration]</p>
+            <p><strong>这对市场意味着什么 (Market Implication):</strong> [Pending narrative integration]</p>
+          </div>
+        )}
       </section>
     </div>
   );
 
   return <PageLayout main={main} />;
+}
+
+// Wrapper for Snapshot cell
+function SnapshotWrapper({ factor, metricKey, label, desc }: { factor: string, metricKey: string, label: string, desc: string }) {
+  const value = useSnapshotData(factor, metricKey);
+  return (
+    <div className={styles.snapshotCard}>
+      <div className={styles.snapLabel}>{label}</div>
+      <div className={styles.snapValue}>{value !== null && value !== undefined ? value : '[Pending]'}</div>
+      <div className={styles.snapDesc}>{desc}</div>
+    </div>
+  );
 }
 
 // Dedicated wrapper to enforce isolation barriers per chart loop
