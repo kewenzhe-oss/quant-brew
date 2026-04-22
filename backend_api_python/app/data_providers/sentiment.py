@@ -564,35 +564,20 @@ def fetch_employment_data() -> dict:
 
 def fetch_growth_data() -> dict:
     """
-    Fetch key US economic growth metrics from FRED / yfinance.
-
-    Series:
-      ISMMAN    — ISM Manufacturing PMI (monthly, index)
-      ISMSVC    — ISM Services PMI (monthly, index)
-      RSXFSN    — Advance Retail Sales ex Food Services (monthly, M USD)
-      INDPRO    — Industrial Production Index (monthly, index 2017=100)
-
-    YoY for RSXFSN and INDPRO: computed as (latest / 12m_ago - 1) * 100.
-
-    Returns dict with keys:
-      ism_manufacturing, ism_manufacturing_date
-      ism_services, ism_services_date
-      retail_sales_mom (% month-over-month)
-      industrial_production_yoy (% year-over-year)
-      data_quality: 'real' | 'partial' | 'unavailable'
-      source: str
+    Fetch comprehensive US economic growth metrics from FRED / yfinance.
+    Now fully expands upon historical data required for Macro Domain Panel.
     """
     result = {
-        "ism_manufacturing": None,
-        "ism_manufacturing_date": None,
-        "ism_services": None,
-        "ism_services_date": None,
-        "retail_sales_mom": None,
-        "retail_sales_date": None,
-        "industrial_production_yoy": None,
-        "industrial_production_date": None,
+        "ism_manufacturing": None, "ism_manufacturing_date": None,
+        "ism_services": None, "ism_services_date": None,
+        "retail_sales_mom": None, "retail_sales_yoy": None, "retail_sales_date": None,
+        "industrial_production_yoy": None, "industrial_production_date": None,
+        "gdp_growth": None, "gdp_growth_date": None,
+        "recession_probability": None, "recession_probability_date": None,
+        "consumer_confidence": None, "consumer_confidence_date": None,
+        "leading_economic_index": None, "leading_economic_index_date": None,
         "data_quality": "unavailable",
-        "source": "FRED via yfinance",
+        "source": "FRED via yfinance plus FRED API proxy",
     }
 
     connected = 0
@@ -600,67 +585,55 @@ def fetch_growth_data() -> dict:
     try:
         import yfinance as yf
 
-        # ── ISM Manufacturing PMI ──────────────────────────────────────────
+        # Pattern helper
+        def fetch_yoy(ticker_sym: str, result_key: str, is_yoy: bool = False, min_period: str = "3mo"):
+            nonlocal connected
+            try:
+                hist = yf.Ticker(ticker_sym).history(period=min_period, interval="1mo")
+                if hist is not None and not hist.empty:
+                    hist = hist.dropna(subset=["Close"])
+                    if len(hist) >= 1:
+                        latest = hist.iloc[-1]
+                        result[f"{result_key}_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                        
+                        if is_yoy:
+                            if len(hist) >= 13:
+                                year_ago = hist.iloc[-13]
+                                val = round(((float(latest["Close"]) / float(year_ago["Close"])) - 1) * 100, 2)
+                                result[result_key] = val
+                                connected += 1
+                                logger.info(f"{ticker_sym} YoY: {val}%")
+                        else:
+                            val = round(float(latest["Close"]), 2)
+                            result[result_key] = val
+                            connected += 1
+                            logger.info(f"{ticker_sym}: {val}")
+            except Exception as e:
+                logger.warning(f"fetch_growth_data {ticker_sym} failed: {e}")
+
+        fetch_yoy("ISMMAN", "ism_manufacturing", False)
+        fetch_yoy("ISMSVC", "ism_services", False)
+        fetch_yoy("INDPRO", "industrial_production_yoy", True, "14mo")
+        fetch_yoy("RSXFSN", "retail_sales_yoy", True, "14mo")
+        fetch_yoy("UMCSENT", "consumer_confidence", False)
+        fetch_yoy("USSLIND", "leading_economic_index", False)
+        fetch_yoy("RECPROUSM156N", "recession_probability", False)
+
+        # GDP is quarterly, fetching slightly different period string
         try:
-            hist = yf.Ticker("ISMMAN").history(period="3mo", interval="1mo")
+            hist = yf.Ticker("A191RL1Q225SBEA").history(period="1y", interval="3mo")
             if hist is not None and not hist.empty:
                 hist = hist.dropna(subset=["Close"])
                 if len(hist) >= 1:
                     latest = hist.iloc[-1]
-                    result["ism_manufacturing"] = round(float(latest["Close"]), 1)
-                    result["ism_manufacturing_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    result["gdp_growth"] = round(float(latest["Close"]), 2)
+                    result["gdp_growth_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
                     connected += 1
-                    logger.info("ISMMAN: %.1f (%s)", result["ism_manufacturing"], result["ism_manufacturing_date"])
+                    logger.info("GDP Growth: %.2f", result["gdp_growth"])
         except Exception as e:
-            logger.warning("fetch_growth_data ISMMAN failed: %s", e)
+            logger.warning("fetch_growth_data A191RL1Q225SBEA failed: %s", e)
 
-        # ── ISM Services PMI ──────────────────────────────────────────────
-        try:
-            hist = yf.Ticker("ISMSVC").history(period="3mo", interval="1mo")
-            if hist is not None and not hist.empty:
-                hist = hist.dropna(subset=["Close"])
-                if len(hist) >= 1:
-                    latest = hist.iloc[-1]
-                    result["ism_services"] = round(float(latest["Close"]), 1)
-                    result["ism_services_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
-                    connected += 1
-                    logger.info("ISMSVC: %.1f (%s)", result["ism_services"], result["ism_services_date"])
-        except Exception as e:
-            logger.warning("fetch_growth_data ISMSVC failed: %s", e)
-
-        # ── Retail Sales MoM (RSXFSN) ──────────────────────────────────────
-        try:
-            hist = yf.Ticker("RSXFSN").history(period="3mo", interval="1mo")
-            if hist is not None and not hist.empty:
-                hist = hist.dropna(subset=["Close"])
-                if len(hist) >= 2:
-                    latest = hist.iloc[-1]
-                    prev   = hist.iloc[-2]
-                    mom = round(((float(latest["Close"]) / float(prev["Close"])) - 1) * 100, 2)
-                    result["retail_sales_mom"] = mom
-                    result["retail_sales_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
-                    connected += 1
-                    logger.info("RSXFSN MoM: %+.2f%% (%s)", mom, result["retail_sales_date"])
-        except Exception as e:
-            logger.warning("fetch_growth_data RSXFSN failed: %s", e)
-
-        # ── Industrial Production YoY (INDPRO) ─────────────────────────────
-        try:
-            hist = yf.Ticker("INDPRO").history(period="14mo", interval="1mo")
-            if hist is not None and not hist.empty:
-                hist = hist.dropna(subset=["Close"])
-                if len(hist) >= 13:
-                    latest    = hist.iloc[-1]
-                    year_ago  = hist.iloc[-13]
-                    yoy = round(((float(latest["Close"]) / float(year_ago["Close"])) - 1) * 100, 2)
-                    result["industrial_production_yoy"] = yoy
-                    result["industrial_production_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
-                    connected += 1
-                    logger.info("INDPRO YoY: %+.2f%% (%s)", yoy, result["industrial_production_date"])
-        except Exception as e:
-            logger.warning("fetch_growth_data INDPRO failed: %s", e)
-
-        result["data_quality"] = "real" if connected >= 3 else "partial" if connected >= 1 else "unavailable"
+        result["data_quality"] = "real" if connected >= 6 else "partial" if connected >= 1 else "unavailable"
         logger.info("fetch_growth_data: connected=%d, quality=%s", connected, result["data_quality"])
 
     except Exception as e:

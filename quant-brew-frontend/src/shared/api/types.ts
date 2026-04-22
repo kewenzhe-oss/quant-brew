@@ -158,6 +158,7 @@ export interface SentimentData {
   employment?: EmploymentData;
   /** Growth data (ISM PMI / Retail Sales / Industrial Production) from FRED */
   growth?: GrowthData;
+  growth_metrics?: GrowthMetricsData;
   /** P1 — WTI crude + Gold spot prices (yfinance CL=F / GC=F) */
   commodities_ext?: CommoditiesExtData;
   /** P1 — 30Y yield + Fed Funds effective rate */
@@ -248,6 +249,18 @@ export interface GrowthData {
   industrial_production_date: string | null; // "YYYY-MM"
   data_quality: 'real' | 'partial' | 'unavailable';
   source: string;
+}
+
+export interface GrowthMetricsData extends GrowthData {
+  gdp_growth: number | null;
+  gdp_growth_date: string | null;
+  retail_sales_yoy: number | null;
+  recession_probability: number | null;
+  recession_probability_date: string | null;
+  consumer_confidence: number | null;
+  consumer_confidence_date: string | null;
+  leading_economic_index: number | null;
+  leading_economic_index_date: string | null;
 }
 
 /**

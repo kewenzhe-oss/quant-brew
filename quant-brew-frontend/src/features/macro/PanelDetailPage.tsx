@@ -25,8 +25,16 @@ function useSnapshotData(factorKey: string, metricKey: string) {
   
   // Specific Economy resolutions
   if (factorKey === 'economy') {
-    // Phase 3 Backend Expansion for Economy (gdp, retail_sales, proxy values) is pending real JSON payloads
-    // Returns null to maintain the strict [Pending] boundary structure
+    const metrics = sentiment.growth_metrics;
+    if (!metrics) return null;
+    if (metricKey === 'ism_manufacturing') return metrics.ism_manufacturing;
+    if (metricKey === 'ism_services') return metrics.ism_services;
+    if (metricKey === 'industrial_production_yoy') return metrics.industrial_production_yoy;
+    if (metricKey === 'retail_sales_yoy') return metrics.retail_sales_yoy;
+    if (metricKey === 'gdp_growth') return metrics.gdp_growth;
+    if (metricKey === 'consumer_confidence') return metrics.consumer_confidence;
+    if (metricKey === 'leading_economic_index') return metrics.leading_economic_index;
+    if (metricKey === 'recession_probability') return metrics.recession_probability;
   }
   
   return null;

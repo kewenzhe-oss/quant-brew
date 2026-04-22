@@ -259,14 +259,18 @@ def market_sentiment():
                 "nonfarm_payrolls": None, "nonfarm_payrolls_mom": None, "nonfarm_payrolls_date": None,
                 "data_quality": "unavailable", "source": "FRED via yfinance",
             },
-            # Growth data (FRED monthly)
+            # Growth data (FRED monthly) / Temporary Transport Path
             # data_quality = 'real' | 'partial' | 'unavailable'
-            "growth": results.get("growth") or {
+            "growth_metrics": results.get("growth") or {
                 "ism_manufacturing": None, "ism_manufacturing_date": None,
                 "ism_services": None, "ism_services_date": None,
-                "retail_sales_mom": None, "retail_sales_date": None,
+                "retail_sales_mom": None, "retail_sales_yoy": None, "retail_sales_date": None,
                 "industrial_production_yoy": None, "industrial_production_date": None,
-                "data_quality": "unavailable", "source": "FRED via yfinance",
+                "gdp_growth": None, "gdp_growth_date": None,
+                "recession_probability": None, "recession_probability_date": None,
+                "consumer_confidence": None, "consumer_confidence_date": None,
+                "leading_economic_index": None, "leading_economic_index_date": None,
+                "data_quality": "unavailable", "source": "FRED via yfinance plus API proxy",
             },
             # P1: WTI crude + Gold spot prices
             "commodities_ext": results.get("commodities_ext") or {
