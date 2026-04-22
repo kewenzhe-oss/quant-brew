@@ -1,10 +1,5 @@
 import { PageLayout } from '@/app/layouts/PageLayout';
 import { MacroDecisionEngine } from './MacroDecisionEngine';
-import { MacroNarrative } from './MacroNarrative';
-import { IndexGrid } from './IndexGrid';
-import { SentimentDashboard } from './SentimentDashboard';
-import { CommoditiesStrip } from './CommoditiesStrip';
-import { EconomicCalendar } from './EconomicCalendar';
 import { MacroContextPanel } from './MacroContextPanel';
 import styles from './MacroPage.module.css';
 
@@ -20,18 +15,8 @@ export function MacroPage() {
 function MacroMainContent() {
   return (
     <div className={styles.macroLayout}>
-      {/* 全新的核心决策与推演引擎 */}
+      {/* 核心决策与推演引擎，收拢唯一的首页入口 */}
       <MacroDecisionEngine />
-
-      {/* Legacy 模块折叠保留，满⾜ "validation-oriented" 而非删除条件 */}
-      <details className={styles.legacyToggle}>
-        <summary>原始市场数据视角 (Raw Data Validation)</summary>
-        <MacroNarrative />
-        <IndexGrid />
-        <SentimentDashboard />
-        <CommoditiesStrip />
-        <EconomicCalendar />
-      </details>
     </div>
   );
 }

@@ -11,32 +11,46 @@ import { useRef, useEffect, useState } from 'react';
 import { createChart, ColorType, LineStyle, AreaSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import type { ChartDataPoint, HistoryTimeframe } from '@/shared/market-intelligence/chartSeries';
+import { CHART_REGISTRY } from '@/shared/market-intelligence/chartSeries';
 import styles from './DimensionChart.module.css';
 
-const TIMEFRAMES: HistoryTimeframe[] = ['1M', '3M', '6M', '1Y', 'ALL'];
+const TIMEFRAMES: HistoryTimeframe[] = ['1M', '3M', '6M', '1Y', '2Y', 'ALL'];
 
 const DAYS_FOR_TIMEFRAME: Record<HistoryTimeframe, number | null> = {
   '1M': 30,
   '3M': 90,
   '6M': 180,
   '1Y': 365,
+  '2Y': 730,
   'ALL': null,
 };
 
 interface DimensionChartProps {
+  metricKey: string;
   label: string;
   series: ChartDataPoint[] | null;
+  isLoading?: boolean;
 }
 
-export function DimensionChart({ label, series }: DimensionChartProps) {
+export function DimensionChart({ metricKey, label, series, isLoading }: DimensionChartProps) {
   const hasData = series !== null && series.length > 0;
+
+  if (isLoading) {
+    return (
+      <div className={styles.pendingContainer}>
+        <div className={styles.pendingIcon}>⏳</div>
+        <div className={styles.pendingTitle}>{label}</div>
+        <div className={styles.pendingNotice}>拉取实时时间序列中...</div>
+      </div>
+    );
+  }
 
   if (!hasData) {
     return (
       <div className={styles.pendingContainer}>
         <div className={styles.pendingIcon}>⌛</div>
         <div className={styles.pendingTitle}>{label}</div>
-        <div className={styles.pendingNotice}>历史走势数据待接入</div>
+        <div className={styles.pendingNotice}>历史走势数据待接入 (未请求)</div>
         <div className={styles.pendingTimeframes}>
           {TIMEFRAMES.map((tf) => (
             <span key={tf} className={styles.timeframeDisabled}>{tf}</span>
@@ -46,12 +60,12 @@ export function DimensionChart({ label, series }: DimensionChartProps) {
     );
   }
 
-  return <LiveChart label={label} series={series} />;
+  return <LiveChart metricKey={metricKey} label={label} series={series} />;
 }
 
 /* ── Live chart (only rendered when data is present) ── */
 
-function LiveChart({ label, series }: { label: string; series: ChartDataPoint[] }) {
+function LiveChart({ metricKey, label, series }: { metricKey: string; label: string; series: ChartDataPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
@@ -122,20 +136,39 @@ function LiveChart({ label, series }: { label: string; series: ChartDataPoint[] 
     };
   }, []);
 
-  // Update data when timeframe or series changes
   useEffect(() => {
     if (!seriesRef.current) return;
     const sliced = sliceByTimeframe(series, activeTimeframe);
     // lightweight-charts expects ascending time order
     const sorted = [...sliced].sort((a, b) => a.time.localeCompare(b.time));
     seriesRef.current.setData(sorted);
+    
+    // Draw thresholds if any
+    const spec = Object.values(CHART_REGISTRY).find((c) => c.metricKey === metricKey);
+    if (spec?.thresholds) {
+      spec.thresholds.forEach((th) => {
+        seriesRef.current?.createPriceLine({
+          price: th.value,
+          color: th.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          title: th.label,
+          axisLabelVisible: true,
+        });
+      });
+    }
+
     chartRef.current?.timeScale().fitContent();
-  }, [series, activeTimeframe]);
+  }, [series, activeTimeframe, metricKey]);
+
+  // Use registry title if available
+  const spec = Object.values(CHART_REGISTRY).find((c) => c.metricKey === metricKey);
+  const chartLabel = spec?.title || label;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <span className={styles.chartLabel}>{label}</span>
+        <span className={styles.chartLabel}>{chartLabel}</span>
         <div className={styles.timeframes}>
           {TIMEFRAMES.map((tf) => (
             <button

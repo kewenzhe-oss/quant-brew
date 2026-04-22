@@ -28,6 +28,17 @@ from flask import Blueprint, jsonify, request
 
 from app.utils.logger import get_logger
 from app.utils.auth import login_required
+import os
+from functools import wraps
+
+def public_if_allowed(f):
+    """Dev-only bypass for global market read-only APIs."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if os.getenv("ALLOW_PUBLIC_GLOBAL_MARKET", "false").lower() == "true":
+            return f(*args, **kwargs)
+        return login_required(f)(*args, **kwargs)
+    return decorated
 
 # Unified data-provider layer
 from app.data_providers import get_cached, set_cached, clear_cache
@@ -38,6 +49,8 @@ from app.data_providers.indices import fetch_stock_indices
 from app.data_providers.sentiment import (
     fetch_fear_greed_index, fetch_vix, fetch_dollar_index,
     fetch_yield_curve, fetch_vxn, fetch_gvz, fetch_put_call_ratio,
+    fetch_inflation_data, fetch_employment_data, fetch_growth_data,
+    fetch_wti_gold, fetch_rates_extended,
 )
 from app.data_providers.fed_liquidity import fetch_fed_liquidity
 from app.data_providers.news import fetch_financial_news, get_economic_calendar
@@ -55,7 +68,7 @@ global_market_bp = Blueprint("global_market", __name__)
 # ============ API Endpoints ============
 
 @global_market_bp.route("/overview", methods=["GET"])
-@login_required
+@public_if_allowed
 def market_overview():
     """Get global market overview including indices, forex, crypto, and commodities."""
     try:
@@ -112,7 +125,7 @@ def market_overview():
 
 
 @global_market_bp.route("/heatmap", methods=["GET"])
-@login_required
+@public_if_allowed
 def market_heatmap():
     """Get market heatmap data for crypto, stock sectors, forex, and indices."""
     try:
@@ -131,7 +144,7 @@ def market_heatmap():
 
 
 @global_market_bp.route("/news", methods=["GET"])
-@login_required
+@public_if_allowed
 def market_news():
     """Get financial news from various sources.  Query params: lang ('cn'|'en'|'all')."""
     try:
@@ -153,7 +166,7 @@ def market_news():
 
 
 @global_market_bp.route("/calendar", methods=["GET"])
-@login_required
+@public_if_allowed
 def economic_calendar():
     """Get economic calendar events with impact indicators."""
     try:
@@ -172,7 +185,7 @@ def economic_calendar():
 
 
 @global_market_bp.route("/sentiment", methods=["GET"])
-@login_required
+@public_if_allowed
 def market_sentiment():
     """Get comprehensive market sentiment indicators."""
     try:
@@ -184,7 +197,7 @@ def market_sentiment():
 
         logger.info("Fetching fresh sentiment data (comprehensive)")
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=13) as executor:
             futures = {
                 executor.submit(fetch_fear_greed_index): "fear_greed",
                 executor.submit(fetch_vix): "vix",
@@ -194,6 +207,11 @@ def market_sentiment():
                 executor.submit(fetch_gvz): "gvz",
                 executor.submit(fetch_put_call_ratio): "vix_term",
                 executor.submit(fetch_fed_liquidity): "fed_liquidity",
+                executor.submit(fetch_inflation_data): "inflation",
+                executor.submit(fetch_employment_data): "employment",
+                executor.submit(fetch_growth_data): "growth",
+                executor.submit(fetch_wti_gold): "commodities_ext",
+                executor.submit(fetch_rates_extended): "rates_extended",
             }
             results = {}
             for future in as_completed(futures):
@@ -226,6 +244,40 @@ def market_sentiment():
                 "net_liquidity": None, "data_quality": "unavailable",
                 "source": "FRED via yfinance",
             },
+            # CPI / Core PCE inflation data (FRED monthly)
+            # data_quality = 'real' | 'partial' | 'unavailable'
+            "inflation": results.get("inflation") or {
+                "cpi_level": None, "cpi_yoy": None, "cpi_date": None,
+                "pce_core_level": None, "pce_core_yoy": None, "pce_core_date": None,
+                "data_quality": "unavailable", "source": "FRED via yfinance",
+            },
+            # Employment data (FRED monthly/weekly)
+            # data_quality = 'real' | 'partial' | 'unavailable'
+            "employment": results.get("employment") or {
+                "unemployment_rate": None, "unemployment_date": None,
+                "initial_claims": None, "initial_claims_date": None,
+                "nonfarm_payrolls": None, "nonfarm_payrolls_mom": None, "nonfarm_payrolls_date": None,
+                "data_quality": "unavailable", "source": "FRED via yfinance",
+            },
+            # Growth data (FRED monthly)
+            # data_quality = 'real' | 'partial' | 'unavailable'
+            "growth": results.get("growth") or {
+                "ism_manufacturing": None, "ism_manufacturing_date": None,
+                "ism_services": None, "ism_services_date": None,
+                "retail_sales_mom": None, "retail_sales_date": None,
+                "industrial_production_yoy": None, "industrial_production_date": None,
+                "data_quality": "unavailable", "source": "FRED via yfinance",
+            },
+            # P1: WTI crude + Gold spot prices
+            "commodities_ext": results.get("commodities_ext") or {
+                "wti": None, "gold": None,
+                "data_quality": "unavailable", "source": "yfinance CL=F / GC=F",
+            },
+            # P1: 30Y yield + Fed Funds Rate
+            "rates_extended": results.get("rates_extended") or {
+                "fed_funds": None, "us30y": None,
+                "data_quality": "unavailable", "source": "yfinance ^TYX + FRED DFF",
+            },
             "timestamp": int(time.time()),
         }
 
@@ -239,7 +291,7 @@ def market_sentiment():
 
 
 @global_market_bp.route("/opportunities", methods=["GET"])
-@login_required
+@public_if_allowed
 def trading_opportunities():
     """Scan for trading opportunities across Crypto, US/CN/HK Stocks, and Forex."""
     try:
@@ -283,8 +335,9 @@ def trading_opportunities():
         return jsonify({"code": 0, "msg": str(e), "data": None}), 500
 
 
+
 @global_market_bp.route("/refresh", methods=["POST"])
-@login_required
+@public_if_allowed
 def refresh_data():
     """Force refresh all market data (clears cache)."""
     try:
@@ -292,4 +345,96 @@ def refresh_data():
         return jsonify({"code": 1, "msg": "Cache cleared successfully", "data": None})
     except Exception as e:
         logger.error("refresh_data failed: %s", e, exc_info=True)
+        return jsonify({"code": 0, "msg": str(e), "data": None}), 500
+
+
+# ── Macro history series ───────────────────────────────────────────────────────
+#
+# Whitelist of metric keys → yfinance tickers.
+# Only read-only public market/macro data. No auth needed.
+#
+_SERIES_WHITELIST: dict[str, dict] = {
+    "us10y":        {"ticker": "^TNX",       "label": "10Y 美债收益率",    "unit": "%"},
+    "us2y":         {"ticker": "^IRX",       "label": "2Y 美债收益率",    "unit": "%"},
+    "vix":          {"ticker": "^VIX",       "label": "VIX 隐含波动率",  "unit": "index"},
+    "dxy":          {"ticker": "DX-Y.NYB",   "label": "美元指数 DXY",    "unit": "index"},
+    "spx":          {"ticker": "^GSPC",      "label": "S&P 500",         "unit": "pts"},
+    "gold":         {"ticker": "GC=F",       "label": "黄金期货",        "unit": "USD/oz"},
+    # FRED monthly series — Inflation
+    "cpi_yoy":      {"ticker": "CPIAUCSL",   "label": "CPI (CPIAUCSL)",  "unit": "index"},
+    "pce_core_yoy": {"ticker": "PCEPILFE",   "label": "Core PCE (PCEPILFE)", "unit": "index"},
+    # FRED series — Employment
+    "unemployment_rate":   {"ticker": "UNRATE",   "label": "失业率 UNRATE",      "unit": "%"},
+    "initial_claims":      {"ticker": "IC4WSA",   "label": "初请失业金 IC4WSA", "unit": "K"},
+    "nonfarm_payrolls":    {"ticker": "PAYEMS",   "label": "非农就业 PAYEMS",    "unit": "K"},
+    # FRED series — Growth
+    "ism_manufacturing":   {"ticker": "ISMMAN",   "label": "ISM 制造业 PMI",    "unit": "index"},
+    "ism_services":        {"ticker": "ISMSVC",   "label": "ISM 服务业 PMI",    "unit": "index"},
+    "industrial_production": {"ticker": "INDPRO", "label": "工业产出 INDPRO",   "unit": "index"},
+}
+
+
+@global_market_bp.route("/series/<metric_key>", methods=["GET"])
+def get_macro_series(metric_key: str):
+    """
+    GET /api/global-market/series/<metric_key>
+
+    Returns 1-year daily history for a whitelisted macro metric.
+    Response: { data: [{time: "YYYY-MM-DD", value: float}], label, unit }
+
+    Used by the Macro Dimension drilldown charts (DimensionChart component).
+    No auth required — public market data only.
+    """
+    if metric_key not in _SERIES_WHITELIST:
+        return jsonify({
+            "code": 0,
+            "msg": f"Unknown metric: {metric_key}. Available: {list(_SERIES_WHITELIST.keys())}",
+            "data": None,
+        }), 404
+
+    cache_key = f"macro_series_{metric_key}"
+    cached = get_cached(cache_key)
+    if cached is not None:
+        return jsonify({"code": 1, "data": cached})
+
+    cfg = _SERIES_WHITELIST[metric_key]
+    ticker_sym = cfg["ticker"]
+
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(ticker_sym)
+        hist = ticker.history(period="1y", interval="1d")
+
+        if hist is None or hist.empty:
+            return jsonify({
+                "code": 0,
+                "msg": f"No history available for {ticker_sym}",
+                "data": None,
+            }), 503
+
+        # Build ChartDataPoint list — {time: YYYY-MM-DD, value: float}
+        points = []
+        for ts, row in hist.iterrows():
+            date_str = ts.strftime("%Y-%m-%d")
+            close_val = float(row["Close"])
+            if close_val != close_val:  # NaN guard
+                continue
+            points.append({"time": date_str, "value": round(close_val, 4)})
+
+        result = {
+            "metric": metric_key,
+            "label":  cfg["label"],
+            "unit":   cfg["unit"],
+            "ticker": ticker_sym,
+            "points": points,
+        }
+
+        # Cache for 30 minutes (daily data, no need for high frequency)
+        set_cached(cache_key, result, ttl=1800)
+
+        logger.info("macro_series %s (%s): %d points", metric_key, ticker_sym, len(points))
+        return jsonify({"code": 1, "data": result})
+
+    except Exception as e:
+        logger.error("macro_series %s failed: %s", metric_key, e, exc_info=True)
         return jsonify({"code": 0, "msg": str(e), "data": None}), 500

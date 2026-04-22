@@ -129,3 +129,50 @@ export interface NarrativeLayer {
   what_to_watch: string[];
   dimension_summaries: Record<DimensionKey, string>;
 }
+
+/* ── Chart types ── */
+
+export type ChartType = 'line' | 'area' | 'bar' | 'candlestick';
+export type ChartRange = '1M' | '3M' | '6M' | '1Y' | '2Y' | 'ALL';
+
+/**
+ * Canonical chart specification.
+ * ALL charts in the Macro product must be declared in the CHART_REGISTRY.
+ * Components may NEVER embed their own chart data or series definitions.
+ */
+export interface ChartSpec {
+  /** Unique chart id — e.g. 'us10y_yield_line' */
+  id: string;
+  /** Matches MetricDef.key in macroIA.config.ts */
+  metricKey: string;
+  title: string;
+  description: string;
+  chartType: ChartType;
+  unit: string;
+  defaultRange: ChartRange;
+  availableRanges: ChartRange[];
+  /** FRED series ID or yfinance ticker used by the /api/macro/history endpoint */
+  seriesId: string;
+  /** Reference threshold lines rendered on the chart */
+  thresholds?: { value: number; label: string; color: string }[];
+  /** Which domain/dimension this chart belongs to (for filtering) */
+  domainKey: string;
+  dimensionSlug: string;
+}
+
+/**
+ * Canonical per-metric data payload consumed by UI components.
+ * Always comes from the normalize layer — never from raw API responses directly.
+ */
+export interface CanonicalMetricData {
+  key: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  change: number | null;
+  changeUnit: string;
+  date: string | null;         // YYYY-MM or YYYY-MM-DD
+  dataQuality: 'real' | 'partial' | 'unavailable' | 'proxy';
+  source: string;
+  context: string;             // 1-line interpretation for UI display
+}

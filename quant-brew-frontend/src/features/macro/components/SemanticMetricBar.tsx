@@ -15,6 +15,20 @@ export function SemanticMetricBar({ metric }: Props) {
       return <US10YBar metric={metric} />;
     case 'yield_spread_2s10s':
       return <YieldSpreadBar metric={metric} />;
+    case 'cpi_yoy':
+    case 'pce_core_yoy':
+      return <InflationYoYBar metric={metric} />;
+    case 'unemployment_rate':
+      return <UnemploymentBar metric={metric} />;
+    case 'initial_jobless_claims':
+      return <InitialClaimsBar metric={metric} />;
+    case 'nonfarm_payrolls':
+      return <NonFarmPayrollsBar metric={metric} />;
+    case 'ism_manufacturing':
+    case 'ism_services':
+      return <ISMBar metric={metric} />;
+    case 'retail_sales_mom':
+      return <RetailSalesBar metric={metric} />;
     default:
       return <DefaultBar metric={metric} />;
   }
@@ -130,6 +144,156 @@ function DefaultBar({ metric }: Props) {
             </span>
           )}
         </span>
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── Inflation YoY bar (CPI / PCE): 0–6% range, target at 2% ──────────────────
+function InflationYoYBar({ metric }: Props) {
+  const v = metric.value;
+  // Range 0→6%; split: <2% green, 2-3% amber, >3% red
+  const pct = Math.min(Math.max((v / 6) * 100, 0), 100);
+  const color = v > 3 ? '#ef4444' : v > 2.5 ? '#f59e0b' : '#10b981';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>{v.toFixed(1)}<span className={styles.unit}>%</span></span>
+      </div>
+      <div className={styles.track}>
+        <div className={styles.fill} style={{ width: `${pct}%`, backgroundColor: color }} />
+        {/* 2% target marker */}
+        <div className={styles.marker} style={{ left: '33.3%' }} title="2% target" />
+        {/* 3% warning marker */}
+        <div className={styles.marker} style={{ left: '50%' }} title="3%" />
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── Unemployment Rate bar: 3–7% range ────────────────────────────────────────
+function UnemploymentBar({ metric }: Props) {
+  const v = metric.value;
+  // Range 3→7%; healthy <4%, warning >4.5%
+  const pct = Math.min(Math.max(((v - 3) / 4) * 100, 0), 100);
+  const color = v > 5 ? '#ef4444' : v > 4.5 ? '#f59e0b' : '#10b981';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>{v.toFixed(1)}<span className={styles.unit}>%</span></span>
+      </div>
+      <div className={styles.track}>
+        <div className={styles.fill} style={{ width: `${pct}%`, backgroundColor: color }} />
+        {/* 4% marker */}
+        <div className={styles.marker} style={{ left: '25%' }} title="4%" />
+        {/* 4.5% marker */}
+        <div className={styles.marker} style={{ left: '37.5%' }} title="4.5%" />
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── Initial Jobless Claims bar: 150K–400K range ───────────────────────────────
+function InitialClaimsBar({ metric }: Props) {
+  const v = metric.value;
+  // Range 150→400K; alert >280K, warning >250K
+  const pct = Math.min(Math.max(((v - 150) / 250) * 100, 0), 100);
+  const color = v > 300 ? '#ef4444' : v > 250 ? '#f59e0b' : '#10b981';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>{v.toFixed(0)}<span className={styles.unit}>K</span></span>
+      </div>
+      <div className={styles.track}>
+        <div className={styles.fill} style={{ width: `${pct}%`, backgroundColor: color }} />
+        {/* 250K: watch marker */}
+        <div className={styles.marker} style={{ left: '40%' }} title="250K" />
+        {/* 300K: alert marker */}
+        <div className={styles.marker} style={{ left: '60%' }} title="300K" />
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── Nonfarm Payrolls MoM signed bar: -200K → +400K ───────────────────────────
+function NonFarmPayrollsBar({ metric }: Props) {
+  const v = metric.value;
+  const color = v > 0 ? '#10b981' : '#ef4444';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>
+          {v > 0 ? '+' : ''}{v.toFixed(0)}<span className={styles.unit}>K</span>
+        </span>
+      </div>
+      <div className={styles.zeroTrack}>
+        <div className={styles.zeroCenter} />
+        {v < 0 ? (
+          <div className={styles.zeroFillLeft}
+               style={{ width: `${Math.min((Math.abs(v) / 300) * 50, 50)}%`, backgroundColor: '#ef4444' }} />
+        ) : (
+          <div className={styles.zeroFillRight}
+               style={{ width: `${Math.min((v / 400) * 50, 50)}%`, backgroundColor: '#10b981' }} />
+        )}
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── ISM PMI bar: 40–65 range, pivot at 50 ────────────────────────────────────
+function ISMBar({ metric }: Props) {
+  const v = metric.value;
+  // Range 40→65; pivot at 50 (expansion line = 40% of bar)
+  const pct = Math.min(Math.max(((v - 40) / 25) * 100, 0), 100);
+  const color = v > 55 ? '#059669' : v > 50 ? '#10b981' : v > 48 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>{v.toFixed(1)}</span>
+      </div>
+      <div className={styles.track}>
+        <div className={styles.fill} style={{ width: `${pct}%`, backgroundColor: color }} />
+        {/* 50 expansion line (40% of 40→65 range) */}
+        <div className={styles.marker} style={{ left: '40%' }} title="50 expansion line" />
+        {/* 55 strong expansion */}
+        <div className={styles.marker} style={{ left: '60%' }} title="55" />
+      </div>
+      <div className={styles.context}>{metric.context}</div>
+    </div>
+  );
+}
+
+// ── Retail Sales MoM signed bar: -2% → +2% ───────────────────────────────────
+function RetailSalesBar({ metric }: Props) {
+  const v = metric.value;
+  const color = v >= 0 ? '#10b981' : '#ef4444';
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <span className={styles.label}>{metric.label}</span>
+        <span className={styles.value} style={{ color }}>
+          {v > 0 ? '+' : ''}{v.toFixed(2)}<span className={styles.unit}>%</span>
+        </span>
+      </div>
+      <div className={styles.zeroTrack}>
+        <div className={styles.zeroCenter} />
+        {v < 0 ? (
+          <div className={styles.zeroFillLeft}
+               style={{ width: `${Math.min(Math.abs(v) * 25, 50)}%`, backgroundColor: '#ef4444' }} />
+        ) : (
+          <div className={styles.zeroFillRight}
+               style={{ width: `${Math.min(v * 25, 50)}%`, backgroundColor: '#10b981' }} />
+        )}
       </div>
       <div className={styles.context}>{metric.context}</div>
     </div>

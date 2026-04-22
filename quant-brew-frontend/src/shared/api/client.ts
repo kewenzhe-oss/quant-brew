@@ -31,7 +31,14 @@ async function request<T>(
     throw new ApiError(res.status, `API ${res.status}: ${endpoint}`);
   }
 
-  return res.json() as Promise<T>;
+  const payload = await res.json() as any;
+  if (payload && payload.code !== undefined) {
+    if (payload.code !== 1) {
+      throw new ApiError(payload.code, payload.msg || 'API Error');
+    }
+    return payload.data as T;
+  }
+  return payload as T;
 }
 
 export const api = {

@@ -374,3 +374,454 @@ def fetch_put_call_ratio() -> Dict[str, Any]:
             "level": "unknown", "signal": "neutral",
             "interpretation": "数据获取失败", "interpretation_en": "Data fetch failed",
         }
+
+
+def fetch_inflation_data() -> dict:
+    """
+    Fetch CPI YoY and Core PCE YoY from FRED via yfinance.
+
+    FRED monthly series:
+      CPIAUCSL  — Consumer Price Index for All Urban Consumers (not seasonally adjusted level)
+      PCEPILFE  — Core PCE Price Index (excluding food & energy)
+
+    Strategy:
+      - Download last 14 months of monthly data
+      - Compute YoY % change: (latest / value_12m_ago - 1) * 100
+      - Return latest values + YoY for both series
+
+    Returns dict with keys:
+      cpi_level, cpi_yoy, cpi_date (str YYYY-MM)
+      pce_core_level, pce_core_yoy, pce_core_date (str YYYY-MM)
+      data_quality: 'real' | 'partial' | 'unavailable'
+      source: str
+    """
+    result = {
+        "cpi_level": None,
+        "cpi_yoy": None,
+        "cpi_date": None,
+        "pce_core_level": None,
+        "pce_core_yoy": None,
+        "pce_core_date": None,
+        "data_quality": "unavailable",
+        "source": "FRED via yfinance",
+    }
+
+    try:
+        import yfinance as yf
+        import pandas as pd
+
+        def _fetch_yoy(fred_ticker: str) -> tuple:
+            """Return (latest_level, yoy_pct, date_str) or (None, None, None)."""
+            try:
+                t = yf.Ticker(fred_ticker)
+                # FRED monthly data — fetch 14 months to guarantee 12m lag
+                hist = t.history(period="14mo", interval="1mo")
+                if hist is None or len(hist) < 13:
+                    logger.warning("fetch_inflation_data: %s has only %d rows", fred_ticker, len(hist) if hist is not None else 0)
+                    return None, None, None
+
+                # Drop rows where Close is NaN
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) < 13:
+                    return None, None, None
+
+                latest_row = hist.iloc[-1]
+                year_ago_row = hist.iloc[-13]
+
+                latest_val = float(latest_row["Close"])
+                year_ago_val = float(year_ago_row["Close"])
+
+                if year_ago_val == 0:
+                    return None, None, None
+
+                yoy = round((latest_val / year_ago_val - 1) * 100, 2)
+                date_str = latest_row.name.strftime("%Y-%m") if hasattr(latest_row.name, "strftime") else str(latest_row.name)[:7]
+
+                return round(latest_val, 4), yoy, date_str
+
+            except Exception as e:
+                logger.error("fetch_inflation_data %s failed: %s", fred_ticker, e)
+                return None, None, None
+
+        cpi_level, cpi_yoy, cpi_date = _fetch_yoy("CPIAUCSL")
+        pce_level, pce_yoy, pce_date = _fetch_yoy("PCEPILFE")
+
+        if cpi_yoy is not None:
+            result["cpi_level"] = cpi_level
+            result["cpi_yoy"] = cpi_yoy
+            result["cpi_date"] = cpi_date
+
+        if pce_yoy is not None:
+            result["pce_core_level"] = pce_level
+            result["pce_core_yoy"] = pce_yoy
+            result["pce_core_date"] = pce_date
+
+        # Data quality
+        if cpi_yoy is not None and pce_yoy is not None:
+            result["data_quality"] = "real"
+        elif cpi_yoy is not None or pce_yoy is not None:
+            result["data_quality"] = "partial"
+        else:
+            result["data_quality"] = "unavailable"
+
+        logger.info(
+            "fetch_inflation_data: CPI YoY=%s%% (%s), PCE Core YoY=%s%% (%s), quality=%s",
+            cpi_yoy, cpi_date, pce_yoy, pce_date, result["data_quality"],
+        )
+
+    except Exception as e:
+        logger.error("fetch_inflation_data failed: %s", e, exc_info=True)
+
+    return result
+
+
+def fetch_employment_data() -> dict:
+    """
+    Fetch key US employment metrics from FRED via yfinance.
+
+    Series:
+      UNRATE    — Unemployment Rate (monthly, %)
+      IC4WSA    — Initial Jobless Claims 4-week average (weekly, K persons)
+      PAYEMS    — Nonfarm Payrolls (monthly, K persons)
+
+    Returns dict with keys:
+      unemployment_rate, unemployment_date
+      initial_claims, initial_claims_date
+      nonfarm_payrolls, nonfarm_payrolls_mom (month-over-month change in K)
+      data_quality: 'real' | 'partial' | 'unavailable'
+      source: str
+    """
+    result = {
+        "unemployment_rate": None,
+        "unemployment_date": None,
+        "initial_claims": None,
+        "initial_claims_date": None,
+        "nonfarm_payrolls": None,
+        "nonfarm_payrolls_mom": None,
+        "nonfarm_payrolls_date": None,
+        "data_quality": "unavailable",
+        "source": "FRED via yfinance",
+    }
+
+    connected = 0
+
+    try:
+        import yfinance as yf
+
+        # ── UNRATE (monthly) ──────────────────────────────────────────────
+        try:
+            hist = yf.Ticker("UNRATE").history(period="3mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 1:
+                    latest = hist.iloc[-1]
+                    result["unemployment_rate"] = round(float(latest["Close"]), 2)
+                    result["unemployment_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("UNRATE: %.2f%% (%s)", result["unemployment_rate"], result["unemployment_date"])
+        except Exception as e:
+            logger.warning("fetch_employment_data UNRATE failed: %s", e)
+
+        # ── IC4WSA (weekly 4-week average initial claims) ──────────────────
+        try:
+            hist = yf.Ticker("IC4WSA").history(period="1mo", interval="1wk")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 1:
+                    latest = hist.iloc[-1]
+                    # IC4WSA is reported in thousands
+                    result["initial_claims"] = round(float(latest["Close"]), 1)
+                    result["initial_claims_date"] = latest.name.strftime("%Y-%m-%d") if hasattr(latest.name, "strftime") else str(latest.name)[:10]
+                    connected += 1
+                    logger.info("IC4WSA: %.1fK (%s)", result["initial_claims"], result["initial_claims_date"])
+        except Exception as e:
+            logger.warning("fetch_employment_data IC4WSA failed: %s", e)
+
+        # ── PAYEMS (monthly nonfarm payrolls, K persons) ───────────────────
+        try:
+            hist = yf.Ticker("PAYEMS").history(period="3mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 2:
+                    latest = hist.iloc[-1]
+                    prev   = hist.iloc[-2]
+                    result["nonfarm_payrolls"] = round(float(latest["Close"]), 0)
+                    result["nonfarm_payrolls_mom"] = round(float(latest["Close"]) - float(prev["Close"]), 0)
+                    result["nonfarm_payrolls_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("PAYEMS: %.0fK (MoM %+.0fK) (%s)", result["nonfarm_payrolls"], result["nonfarm_payrolls_mom"], result["nonfarm_payrolls_date"])
+        except Exception as e:
+            logger.warning("fetch_employment_data PAYEMS failed: %s", e)
+
+        result["data_quality"] = "real" if connected == 3 else "partial" if connected >= 1 else "unavailable"
+        logger.info("fetch_employment_data: connected=%d, quality=%s", connected, result["data_quality"])
+
+    except Exception as e:
+        logger.error("fetch_employment_data failed: %s", e, exc_info=True)
+
+    return result
+
+
+def fetch_growth_data() -> dict:
+    """
+    Fetch key US economic growth metrics from FRED / yfinance.
+
+    Series:
+      ISMMAN    — ISM Manufacturing PMI (monthly, index)
+      ISMSVC    — ISM Services PMI (monthly, index)
+      RSXFSN    — Advance Retail Sales ex Food Services (monthly, M USD)
+      INDPRO    — Industrial Production Index (monthly, index 2017=100)
+
+    YoY for RSXFSN and INDPRO: computed as (latest / 12m_ago - 1) * 100.
+
+    Returns dict with keys:
+      ism_manufacturing, ism_manufacturing_date
+      ism_services, ism_services_date
+      retail_sales_mom (% month-over-month)
+      industrial_production_yoy (% year-over-year)
+      data_quality: 'real' | 'partial' | 'unavailable'
+      source: str
+    """
+    result = {
+        "ism_manufacturing": None,
+        "ism_manufacturing_date": None,
+        "ism_services": None,
+        "ism_services_date": None,
+        "retail_sales_mom": None,
+        "retail_sales_date": None,
+        "industrial_production_yoy": None,
+        "industrial_production_date": None,
+        "data_quality": "unavailable",
+        "source": "FRED via yfinance",
+    }
+
+    connected = 0
+
+    try:
+        import yfinance as yf
+
+        # ── ISM Manufacturing PMI ──────────────────────────────────────────
+        try:
+            hist = yf.Ticker("ISMMAN").history(period="3mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 1:
+                    latest = hist.iloc[-1]
+                    result["ism_manufacturing"] = round(float(latest["Close"]), 1)
+                    result["ism_manufacturing_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("ISMMAN: %.1f (%s)", result["ism_manufacturing"], result["ism_manufacturing_date"])
+        except Exception as e:
+            logger.warning("fetch_growth_data ISMMAN failed: %s", e)
+
+        # ── ISM Services PMI ──────────────────────────────────────────────
+        try:
+            hist = yf.Ticker("ISMSVC").history(period="3mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 1:
+                    latest = hist.iloc[-1]
+                    result["ism_services"] = round(float(latest["Close"]), 1)
+                    result["ism_services_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("ISMSVC: %.1f (%s)", result["ism_services"], result["ism_services_date"])
+        except Exception as e:
+            logger.warning("fetch_growth_data ISMSVC failed: %s", e)
+
+        # ── Retail Sales MoM (RSXFSN) ──────────────────────────────────────
+        try:
+            hist = yf.Ticker("RSXFSN").history(period="3mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 2:
+                    latest = hist.iloc[-1]
+                    prev   = hist.iloc[-2]
+                    mom = round(((float(latest["Close"]) / float(prev["Close"])) - 1) * 100, 2)
+                    result["retail_sales_mom"] = mom
+                    result["retail_sales_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("RSXFSN MoM: %+.2f%% (%s)", mom, result["retail_sales_date"])
+        except Exception as e:
+            logger.warning("fetch_growth_data RSXFSN failed: %s", e)
+
+        # ── Industrial Production YoY (INDPRO) ─────────────────────────────
+        try:
+            hist = yf.Ticker("INDPRO").history(period="14mo", interval="1mo")
+            if hist is not None and not hist.empty:
+                hist = hist.dropna(subset=["Close"])
+                if len(hist) >= 13:
+                    latest    = hist.iloc[-1]
+                    year_ago  = hist.iloc[-13]
+                    yoy = round(((float(latest["Close"]) / float(year_ago["Close"])) - 1) * 100, 2)
+                    result["industrial_production_yoy"] = yoy
+                    result["industrial_production_date"] = latest.name.strftime("%Y-%m") if hasattr(latest.name, "strftime") else str(latest.name)[:7]
+                    connected += 1
+                    logger.info("INDPRO YoY: %+.2f%% (%s)", yoy, result["industrial_production_date"])
+        except Exception as e:
+            logger.warning("fetch_growth_data INDPRO failed: %s", e)
+
+        result["data_quality"] = "real" if connected >= 3 else "partial" if connected >= 1 else "unavailable"
+        logger.info("fetch_growth_data: connected=%d, quality=%s", connected, result["data_quality"])
+
+    except Exception as e:
+        logger.error("fetch_growth_data failed: %s", e, exc_info=True)
+
+    return result
+
+
+# ── NEW: Commodities (WTI + Gold) ──────────────────────────────────────────
+
+def fetch_wti_gold() -> dict:
+    """
+    Fetch WTI crude oil (CL=F) and Gold spot (GC=F) via yfinance.
+
+    Returns:
+      wti: { value, change, change_pct } | None
+      gold: { value, change, change_pct } | None
+      data_quality: 'real' | 'partial' | 'unavailable'
+      source: str
+    """
+    result = {
+        "wti": None,
+        "gold": None,
+        "data_quality": "unavailable",
+        "source": "yfinance CL=F / GC=F",
+    }
+
+    try:
+        import yfinance as yf
+        import pandas as pd
+
+        tickers = yf.download(
+            ["CL=F", "GC=F"],
+            period="5d",
+            progress=False,
+            auto_adjust=True,
+        )
+
+        if tickers.empty:
+            logger.warning("fetch_wti_gold: yfinance returned empty dataframe")
+            return result
+
+        closes = tickers["Close"] if "Close" in tickers.columns else tickers
+
+        def _extract(col: str) -> dict | None:
+            if col not in closes.columns:
+                return None
+            vals = closes[col].dropna()
+            if vals.empty:
+                return None
+            latest = float(vals.iloc[-1])
+            prev   = float(vals.iloc[-2]) if len(vals) >= 2 else latest
+            chg    = round(latest - prev, 2)
+            chg_pct = round((latest / prev - 1) * 100, 2) if prev else 0
+            return {
+                "value":      round(latest, 2),
+                "change":     chg,
+                "change_pct": chg_pct,
+            }
+
+        result["wti"]  = _extract("CL=F")
+        result["gold"] = _extract("GC=F")
+
+        present = sum(v is not None for v in [result["wti"], result["gold"]])
+        result["data_quality"] = (
+            "real"        if present == 2 else
+            "partial"     if present == 1 else
+            "unavailable"
+        )
+
+        logger.info(
+            "fetch_wti_gold: WTI=%s, Gold=%s (%s)",
+            result["wti"]["value"] if result["wti"] else "None",
+            result["gold"]["value"] if result["gold"] else "None",
+            result["data_quality"],
+        )
+
+    except Exception as e:
+        logger.error("fetch_wti_gold failed: %s", e, exc_info=True)
+
+    return result
+
+
+# ── NEW: Rates Extended (30Y yield + Fed Funds Rate) ───────────────────────
+
+def fetch_rates_extended() -> dict:
+    """
+    Fetch additional rates data not covered by fetch_yield_curve():
+      - 30Y Treasury yield via yfinance (^TYX)
+      - Fed Funds effective rate via FRED direct CSV (DFF)
+
+    Returns:
+      fed_funds: { value, change } | None
+      us30y:     { value, change } | None
+      data_quality: 'real' | 'partial' | 'unavailable'
+      source: str
+    """
+    import requests as _requests
+
+    result = {
+        "fed_funds": None,
+        "us30y":     None,
+        "data_quality": "unavailable",
+        "source": "yfinance ^TYX + FRED DFF",
+    }
+
+    # ── 30Y yield (yfinance) ──
+    try:
+        import yfinance as yf
+        hist = yf.Ticker("^TYX").history(period="5d")
+        if hist is not None and not hist.empty:
+            latest = float(hist["Close"].iloc[-1])
+            prev   = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else latest
+            result["us30y"] = {
+                "value":  round(latest, 3),
+                "change": round(latest - prev, 3),
+            }
+            logger.info("30Y yield: %.3f%%", latest)
+    except Exception as e:
+        logger.warning("fetch_rates_extended: 30Y yfinance failed: %s", e)
+
+    # ── Fed Funds Rate (FRED direct CSV — no API key) ──
+    try:
+        _FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFF"
+        resp = _requests.get(
+            _FRED_CSV,
+            timeout=15,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; QuantBrew/1.0)"},
+        )
+        if resp.status_code == 200:
+            lines = resp.text.strip().split("\n")
+            data_lines = [
+                l for l in lines
+                if l and not l.startswith("DATE") and not l.endswith(".")
+            ]
+            if data_lines:
+                # Last two values for change
+                last  = data_lines[-1].split(",")
+                prev  = data_lines[-2].split(",") if len(data_lines) >= 2 else last
+                val   = float(last[1].strip())
+                p_val = float(prev[1].strip())
+                result["fed_funds"] = {
+                    "value":  round(val, 3),
+                    "change": round(val - p_val, 3),
+                }
+                logger.info("Fed Funds Rate (FRED): %.3f%%", val)
+        else:
+            logger.warning("fetch_rates_extended: FRED DFF HTTP %d", resp.status_code)
+    except Exception as e:
+        logger.warning("fetch_rates_extended: Fed Funds FRED failed: %s", e)
+
+    present = sum(v is not None for v in [result["fed_funds"], result["us30y"]])
+    result["data_quality"] = (
+        "real"        if present == 2 else
+        "partial"     if present == 1 else
+        "unavailable"
+    )
+    logger.info(
+        "fetch_rates_extended: FedFunds=%s, 30Y=%s (%s)",
+        result["fed_funds"]["value"] if result["fed_funds"] else "None",
+        result["us30y"]["value"]     if result["us30y"]     else "None",
+        result["data_quality"],
+    )
+    return result

@@ -1,0 +1,438 @@
+{
+  "indices": [
+    {
+      "symbol": "^GSPC",
+      "name_cn": "标普500",
+      "name_en": "S&P 500",
+      "price": 7126.06,
+      "change": 1.2,
+      "region": "US",
+      "flag": "🇺🇸",
+      "lat": 40.7,
+      "lng": -74.0,
+      "category": "index"
+    },
+    {
+      "symbol": "^DJI",
+      "name_cn": "道琼斯",
+      "name_en": "Dow Jones",
+      "price": 49447.43,
+      "change": 1.79,
+      "region": "US",
+      "flag": "🇺🇸",
+      "lat": 38.5,
+      "lng": -77.0,
+      "category": "index"
+    },
+    {
+      "symbol": "^IXIC",
+      "name_cn": "纳斯达克",
+      "name_en": "NASDAQ",
+      "price": 24468.48,
+      "change": 1.52,
+      "region": "US",
+      "flag": "🇺🇸",
+      "lat": 37.5,
+      "lng": -122.4,
+      "category": "index"
+    },
+    {
+      "symbol": "^GDAXI",
+      "name_cn": "德国DAX",
+      "name_en": "DAX",
+      "price": 24702.24,
+      "change": 2.27,
+      "region": "EU",
+      "flag": "🇩🇪",
+      "lat": 50.1109,
+      "lng": 8.6821,
+      "category": "index"
+    },
+    {
+      "symbol": "^FTSE",
+      "name_cn": "英国富时100",
+      "name_en": "FTSE 100",
+      "price": 10667.6,
+      "change": 0.73,
+      "region": "EU",
+      "flag": "🇬🇧",
+      "lat": 51.5074,
+      "lng": -0.1278,
+      "category": "index"
+    },
+    {
+      "symbol": "^FCHI",
+      "name_cn": "法国CAC40",
+      "name_en": "CAC 40",
+      "price": 8425.13,
+      "change": 1.97,
+      "region": "EU",
+      "flag": "🇫🇷",
+      "lat": 48.8566,
+      "lng": 2.3522,
+      "category": "index"
+    },
+    {
+      "symbol": "^N225",
+      "name_cn": "日经225",
+      "name_en": "Nikkei 225",
+      "price": 58816.47,
+      "change": 0.58,
+      "region": "JP",
+      "flag": "🇯🇵",
+      "lat": 35.6762,
+      "lng": 139.6503,
+      "category": "index"
+    },
+    {
+      "symbol": "^KS11",
+      "name_cn": "韩国KOSPI",
+      "name_en": "KOSPI",
+      "price": 6225.97,
+      "change": 0.55,
+      "region": "KR",
+      "flag": "🇰🇷",
+      "lat": 37.5665,
+      "lng": 126.978,
+      "category": "index"
+    },
+    {
+      "symbol": "^AXJO",
+      "name_cn": "澳洲ASX200",
+      "name_en": "ASX 200",
+      "price": 8903.5,
+      "change": -0.49,
+      "region": "AU",
+      "flag": "🇦🇺",
+      "lat": -33.8688,
+      "lng": 151.2093,
+      "category": "index"
+    },
+    {
+      "symbol": "^BSESN",
+      "name_cn": "印度SENSEX",
+      "name_en": "SENSEX",
+      "price": 78493.54,
+      "change": 0.65,
+      "region": "IN",
+      "flag": "🇮🇳",
+      "lat": 19.076,
+      "lng": 72.8777,
+      "category": "index"
+    }
+  ],
+  "forex": [
+    {
+      "symbol": "EUR/USD",
+      "name": "EUR/USD",
+      "name_cn": "欧元/美元",
+      "name_en": "EUR/USD",
+      "price": 1.17592,
+      "change": -0.2,
+      "base": "EUR",
+      "quote": "USD",
+      "category": "forex"
+    },
+    {
+      "symbol": "GBP/USD",
+      "name": "GBP/USD",
+      "name_cn": "英镑/美元",
+      "name_en": "GBP/USD",
+      "price": 1.34948,
+      "change": -0.23,
+      "base": "GBP",
+      "quote": "USD",
+      "category": "forex"
+    },
+    {
+      "symbol": "USD/JPY",
+      "name": "USD/JPY",
+      "name_cn": "美元/日元",
+      "name_en": "USD/JPY",
+      "price": 159.19501,
+      "change": 0,
+      "base": "USD",
+      "quote": "JPY",
+      "category": "forex"
+    },
+    {
+      "symbol": "USD/CNH",
+      "name": "USD/CNH",
+      "name_cn": "美元/离岸人民币",
+      "name_en": "USD/CNH",
+      "price": 6.82115,
+      "change": 0,
+      "base": "USD",
+      "quote": "CNH",
+      "category": "forex"
+    },
+    {
+      "symbol": "AUD/USD",
+      "name": "AUD/USD",
+      "name_cn": "澳元/美元",
+      "name_en": "AUD/USD",
+      "price": 0.71472,
+      "change": -0.16,
+      "base": "AUD",
+      "quote": "USD",
+      "category": "forex"
+    },
+    {
+      "symbol": "USD/CAD",
+      "name": "USD/CAD",
+      "name_cn": "美元/加元",
+      "name_en": "USD/CAD",
+      "price": 1.36951,
+      "change": -0.04,
+      "base": "USD",
+      "quote": "CAD",
+      "category": "forex"
+    },
+    {
+      "symbol": "USD/CHF",
+      "name": "USD/CHF",
+      "name_cn": "美元/瑞郎",
+      "name_en": "USD/CHF",
+      "price": 0.78262,
+      "change": -0.07,
+      "base": "USD",
+      "quote": "CHF",
+      "category": "forex"
+    },
+    {
+      "symbol": "NZD/USD",
+      "name": "NZD/USD",
+      "name_cn": "纽元/美元",
+      "name_en": "NZD/USD",
+      "price": 0.58768,
+      "change": -0.16,
+      "base": "NZD",
+      "quote": "USD",
+      "category": "forex"
+    }
+  ],
+  "crypto": [
+    {
+      "symbol": "BTC",
+      "name": "BTC",
+      "price": 74334.37,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "ETH",
+      "name": "ETH",
+      "price": 2282.2,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "BNB",
+      "name": "BNB",
+      "price": 620.91,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "SOL",
+      "name": "SOL",
+      "price": 84.1,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "XRP",
+      "name": "XRP",
+      "price": 1.4079,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "ADA",
+      "name": "ADA",
+      "price": 0.2445,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "DOGE",
+      "name": "DOGE",
+      "price": 0.09393,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "AVAX",
+      "name": "AVAX",
+      "price": 9.09,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "DOT",
+      "name": "DOT",
+      "price": 1.252,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "POL",
+      "name": "POL",
+      "price": 0.0886,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "LINK",
+      "name": "LINK",
+      "price": 9.141,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "LTC",
+      "name": "LTC",
+      "price": 54.43,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "UNI",
+      "name": "UNI",
+      "price": 3.26,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "ATOM",
+      "name": "ATOM",
+      "price": 1.77,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    },
+    {
+      "symbol": "XLM",
+      "name": "XLM",
+      "price": 0.16851,
+      "change_24h": 0.0,
+      "change_7d": 0,
+      "market_cap": 0,
+      "volume_24h": 0.0,
+      "image": "",
+      "category": "crypto"
+    }
+  ],
+  "commodities": [
+    {
+      "symbol": "GC=F",
+      "name_cn": "黄金",
+      "name_en": "Gold",
+      "price": 4785.0,
+      "change": -1.49,
+      "unit": "USD/oz",
+      "category": "commodity"
+    },
+    {
+      "symbol": "SI=F",
+      "name_cn": "白银",
+      "name_en": "Silver",
+      "price": 79.54,
+      "change": -2.69,
+      "unit": "USD/oz",
+      "category": "commodity"
+    },
+    {
+      "symbol": "CL=F",
+      "name_cn": "原油 WTI",
+      "name_en": "Crude Oil WTI",
+      "price": 82.59,
+      "change": -8.06,
+      "unit": "USD/bbl",
+      "category": "commodity"
+    },
+    {
+      "symbol": "BZ=F",
+      "name_cn": "原油 Brent",
+      "name_en": "Brent Oil",
+      "price": 90.38,
+      "change": -7.94,
+      "unit": "USD/bbl",
+      "category": "commodity"
+    },
+    {
+      "symbol": "HG=F",
+      "name_cn": "铜",
+      "name_en": "Copper",
+      "price": 6.05,
+      "change": -0.87,
+      "unit": "USD/lb",
+      "category": "commodity"
+    },
+    {
+      "symbol": "NG=F",
+      "name_cn": "天然气",
+      "name_en": "Natural Gas",
+      "price": 2.67,
+      "change": 0.6,
+      "unit": "USD/MMBtu",
+      "category": "commodity"
+    }
+  ],
+  "timestamp": 1776646515
+}

@@ -864,9 +864,10 @@ Return **only** valid Python source: **no** markdown fences, **no** ` ``` `, **n
 
     def _template_code() -> str:
         # Fallback template that follows the project expectations.
+        _prompt_clean = prompt.replace('\n', ' ')[:200]
         header = (
             f"my_indicator_name = \"Custom Indicator\"\n"
-            f"my_indicator_description = \"{prompt.replace('\\n', ' ')[:200]}\"\n\n"
+            f"my_indicator_description = \"{_prompt_clean}\"\n\n"
         )
         body = (
             "# @param rsi_len int 14 RSI period\n\n"

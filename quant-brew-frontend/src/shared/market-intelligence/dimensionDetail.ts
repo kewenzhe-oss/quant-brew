@@ -56,12 +56,19 @@ export interface DimensionDetailView {
   /** 3. Three-part interpretation */
   interpretation: DimensionInterpretation;
 
+  /**
+   * Top-level investment implication — what does this dimension's current state
+   * mean for risk asset positioning? Short, actionable, conclusion-first.
+   */
+  investmentImplication: string;
+
   /** 4. Causal modules — explanatory groupings, NOT a flat indicator list */
   modules: DimensionModule[];
 
   /** 5. Forward-looking anchors */
   watchpoints: string[];
   risks: string[];
+  breakdownOutline: BreakdownOutlineNode[];
 }
 
 export interface DimensionVerdict {
@@ -97,6 +104,12 @@ export interface DimensionModule {
   chartLabel: string;
 }
 
+export interface BreakdownOutlineNode {
+  id: string;
+  title: string;
+  question: string;
+}
+
 /* Backwards-compat alias so any code using the old name still compiles */
 export type DimensionDetailSection = DimensionModule;
 
@@ -107,8 +120,16 @@ export type DimensionDetailSection = DimensionModule;
 export function buildDimensionDetail(
   key: DimensionKey,
   snapshot: MarketIntelligenceSnapshot,
+  dimensionDef?: any, // We pass DimensionDef from UI to populate structure, typed loosely here to avoid cyclic dependency
 ): DimensionDetailView {
   const dim: DimensionAssessment = snapshot.macro[key];
+  
+  // Extract structural outline if config was provided
+  const breakdownOutline: BreakdownOutlineNode[] = dimensionDef?.sections?.map((s: any) => ({
+    id: s.id,
+    title: s.title,
+    question: s.question,
+  })) || [];
 
   return {
     key,
@@ -116,9 +137,11 @@ export function buildDimensionDetail(
     coreQuestion: CORE_QUESTIONS[key],
     verdict: buildVerdict(key, dim),
     interpretation: buildInterpretation(key, dim),
+    investmentImplication: buildInvestmentImplication(key, dim),
     modules: buildModules(key, dim),
-    watchpoints: dim.watchpoints ?? [],
-    risks: dim.risks ?? [],
+    watchpoints: buildWatchpoints(key, dim),
+    risks: buildRisks(key, dim),
+    breakdownOutline,
   };
 }
 
@@ -127,10 +150,10 @@ export function buildDimensionDetail(
    ═══════════════════════════════════════════════════════ */
 
 const CORE_QUESTIONS: Record<DimensionKey, string> = {
-  liquidity:       '市场上的钱是多了还是少了？',
-  economy:         '经济健康度是在变好还是变差？',
-  inflation_rates: '物价压力如何，美联储会怎么做？',
-  sentiment:       '市场在恐慌还是贪婪？',
+  liquidity:       '市场上的钱是多了还是少了？资金成本对风险资产是顺风还是逆风？',
+  economy:         '经济动能是在延续还是走弱？就业与消费是否支撑盈利预期？',
+  inflation_rates: '通胀是否还在压制降息？利率路径是否逐步清晰？',
+  sentiment:       '市场在恐慌还是贪婪？短期定价是否偏离基本面？',
 };
 
 /* ═══════════════════════════════════════════════════════
@@ -450,13 +473,34 @@ function buildEconomyModules(dim: DimensionAssessment): DimensionModule[] {
     });
   }
 
-  if (modules.length === 0) {
+  // Always add a PMI/GDP pending module so the structure is visible
+  modules.push({
+    id: 'growth_pending',
+    title: '01  增长动能（待接入）',
+    moduleQuestion: '实体经济处于扩张还是收缩？制造业与服务业的活跃度如何？',
+    investImplication: 'PMI > 50 且上行 → 经济加速，周期/成长享受盈利预期修复。\nPMI < 50 且下行 → 衰退信号，防御板块相对抑跌。\n待 ISM PMI 数据接入后更新。',
+    metrics: growthMetrics,
+    chartMetricKey: growthMetrics.length > 0 ? 'ism_pmi' : null,
+    chartLabel: 'ISM 制造业 PMI',
+  });
+
+  modules.push({
+    id: 'labor',
+    title: laborMetrics.length > 0 ? '02  就业市场' : '02  就业市场（待接入）',
+    moduleQuestion: '消费者端的经济韧性是否依然完好？劳动市场是否开始松动？',
+    investImplication: '初请失业金上升 → 就业市场松动，消费韧性受损，衰退预警升级。\n登记失业率低位稳定 → 消费端稳健，经济软着陆叙事维持。\n待 UNRATE / IC4WSA 数据接入后更新。',
+    metrics: laborMetrics,
+    chartMetricKey: laborMetrics.length > 0 ? 'initial_claims' : null,
+    chartLabel: '初请失业金（周度）',
+  });
+
+  if (indexMetrics.length > 0) {
     modules.push({
-      id: 'proxy',
-      title: '市场代理指标（增长预期）',
-      moduleQuestion: '当前经济实体数据暂未接入，宽基指数广度作为临时代理。',
-      investImplication: '置信度较低，仅供参考方向。实体数据接入后将替换本模块。',
-      metrics: dim.metrics,
+      id: 'market_proxy',
+      title: '03  市场代理（暂定，实体数据待接入）',
+      moduleQuestion: '在缺乏直接经济数据的情况下，宽基指数的广度表现反映了什么？',
+      investImplication: '宽基指数同步下行 → 市场定价增长放缓，盈利预期下修压力。\n同步上行 + 广度强 → 市场整体乐观，增长预期改善。\n注意：代理精度远低于 PMI / 就业数据，谨慎解读。',
+      metrics: indexMetrics,
       chartMetricKey: null,
       chartLabel: '',
     });
@@ -471,8 +515,13 @@ function buildInflationModules(dim: DimensionAssessment): DimensionModule[] {
   const inflationMetrics = dim.metrics.filter((m) =>
     ['cpi_yoy', 'pce_core_yoy', 'breakeven_5y', 'breakeven_10y'].includes(m.key),
   );
+  // Unblock 30Y and Fed Funds Rate
   const ratesMetrics = dim.metrics.filter((m) =>
-    ['us10y', 'us2y', 'yield_spread_2s10s'].includes(m.key),
+    ['us10y', 'us2y', 'yield_spread_2s10s', 'us30y_yield', 'fed_funds_rate'].includes(m.key),
+  );
+  // Unblock WTI and Gold
+  const commodityMetrics = dim.metrics.filter((m) =>
+    ['wti_crude', 'gold'].includes(m.key),
   );
 
   const modules: DimensionModule[] = [];
@@ -492,10 +541,22 @@ function buildInflationModules(dim: DimensionAssessment): DimensionModule[] {
       id: 'rates',
       title: '利率定价',
       moduleQuestion: '市场如何定价降息预期？曲线形态在传递什么经济信号？',
-      investImplication: '10Y 上行 → 债券贬值，股票折现率抬升，特别压制高估值板块。\n曲线转正（2s10s > 0）→ 衰退信号解除，复苏预期定价开始。\n曲线深度倒挂 → 经济前景悲观，历史上领先衰退 12–18 个月。',
+      investImplication: '10Y/30Y 上行 → 债券贬值，股票折现率抬升，特别压制高估值板块。\n曲线转正（2s10s > 0）→ 衰退信号解除，复苏预期定价开始。\n曲线深度倒挂 → 经济前景悲观，历史上领先衰退 12–18 个月。',
       metrics: ratesMetrics,
       chartMetricKey: 'us10y',
       chartLabel: '10Y 美债收益率',
+    });
+  }
+
+  if (commodityMetrics.length > 0) {
+    modules.push({
+      id: 'commodities',
+      title: '大宗商品',
+      moduleQuestion: '通胀的底层驱动是在升温还是降温？实际利率走向如何？',
+      investImplication: '油价走高可能触发供给侧通胀担忧；黄金走高通常是对实际利率回落或避险情绪的提前定价。',
+      metrics: commodityMetrics,
+      chartMetricKey: 'wti_crude',
+      chartLabel: 'WTI 原油',
     });
   }
 
@@ -537,4 +598,153 @@ function buildSentimentModules(dim: DimensionAssessment): DimensionModule[] {
   }
 
   return modules;
+}
+
+/* ═══════════════════════════════════════════════════════
+   New: buildInvestmentImplication
+   Top-level "what this dimension means for positioning"
+   ═══════════════════════════════════════════════════════ */
+
+function buildInvestmentImplication(
+  key: DimensionKey,
+  dim: DimensionAssessment,
+): string {
+  switch (key) {
+    case 'liquidity': {
+      const y10 = dim.metrics.find((m) => m.key === 'us10y');
+      const spread = dim.metrics.find((m) => m.key === 'yield_spread_2s10s');
+      if (dim.signal === 'risk_supportive') {
+        return '流动性环境偏松，资金成本压力趋缓。历史上净流动性扩张周期往往与风险资产正相关，当前条件倾向于支持风险偏好。';
+      }
+      if (dim.signal === 'risk_headwind') {
+        return '流动性环境偏紧，资金成本高企压制估值扩张空间。' +
+          (y10 ? `10Y 名义利率 ${y10.value.toFixed(2)}% 处于历史偏高区间。` : '') +
+          (spread && spread.value < 0 ? '曲线仍倒挂，信贷传导受阻信号。' : '');
+      }
+      return '流动性条件中性，资金面无强烈方向性信号。' +
+        (y10 ? `当前 10Y 利率 ${y10.value.toFixed(2)}%，` : '') +
+        '建议关注后续联储操作与 WALCL 周度数据。';
+    }
+
+    case 'economy': {
+      if (dim.signal === 'risk_supportive') {
+        return '经济动能偏正，企业盈利预期相对乐观，当前信号支持风险偏好，周期板块可关注。';
+      }
+      if (dim.signal === 'risk_headwind' || dim.status === 'watch') {
+        return '经济动能出现走弱信号，盈利预期可能面临下修压力。建议提升防御性配置比例，关注就业与消费数据拐点。';
+      }
+      return `经济状态中性（当前置信度 ${dim.confidence}%，以市场代理指标评估）。` +
+        '实体经济数据（PMI / 就业）接入后将提升判断精度。';
+    }
+
+    case 'inflation_rates': {
+      const us10y = dim.metrics.find((m) => m.key === 'us10y');
+      const spread = dim.metrics.find((m) => m.key === 'yield_spread_2s10s');
+      if (dim.signal === 'risk_headwind') {
+        return '通胀与利率环境构成估值逆风：' +
+          (us10y ? `名义利率 ${us10y.value.toFixed(2)}% 偏高，折现率抬升压制成长风格。` : '') +
+          '降息落地前，利率敏感型资产（长久期债券、高估值成长股）承压。';
+      }
+      if (dim.signal === 'risk_supportive') {
+        return '去通胀进程清晰，降息路径逐步打开。' +
+          (us10y ? `10Y 利率 ${us10y.value.toFixed(2)}%` : '') +
+          (spread && spread.value > 0 ? `，曲线已转正（${spread.value.toFixed(0)}bps）` : '') +
+          '。利率敏感资产与长久期成长股估值边际改善。';
+      }
+      return '通胀路径尚不明朗，利率中性震荡。' +
+        (us10y ? `10Y ${us10y.value.toFixed(2)}%` : '') +
+        (spread ? `，曲线 ${spread.value.toFixed(0)}bps。` : '。') +
+        '建议等待 CPI / PCE 数据确认方向后再做方向性配置。';
+    }
+
+    case 'sentiment': {
+      const vix = dim.metrics.find((m) => m.key === 'vix');
+      const fg = dim.metrics.find((m) => m.key === 'fear_greed');
+      if (dim.status === 'pressured') {
+        return '情绪指标显示恐慌主导：' +
+          (vix ? `VIX ${vix.value.toFixed(1)}，` : '') +
+          (fg ? `恐惧贪婪指数 ${fg.value}（${fg.context}）。` : '') +
+          '历史上恐慌极端值附近往往出现超跌反弹窗口，但需确认系统性风险未发酵。建议谨慎加仓，优先防守。';
+      }
+      if (dim.status === 'watch') {
+        return '情绪升温，拥挤度风险上升。' +
+          (vix ? `VIX ${vix.value.toFixed(1)}，` : '') +
+          '动量策略需防范均值回归风险，可适度锁定部分收益。';
+      }
+      if (dim.status === 'healthy') {
+        return '情绪偏乐观但未过热，当前信号支持风险偏好维持。' +
+          (fg && fg.value >= 55 ? '注意贪婪指数偏高，避免追涨。' : '');
+      }
+      return '情绪中性，无极端偏向。' +
+        (vix ? `VIX ${vix.value.toFixed(1)}，处于中性区间。` : '') +
+        '当前情绪面不构成方向性催化剂，宜关注基本面信号为主。';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   New: buildWatchpoints / buildRisks
+   Derive richer forward anchors from assess.ts output
+   ═══════════════════════════════════════════════════════ */
+
+function buildWatchpoints(key: DimensionKey, dim: DimensionAssessment): string[] {
+  // Use assess.ts output as base, then add dimension-specific editorial anchors
+  const base: string[] = dim.watchpoints ?? [];
+
+  const editorial: Record<DimensionKey, string[]> = {
+    liquidity: [
+      '美联储 FOMC 会议纪要与点阵图：降息路径是否已被重新定价',
+      '财政部债务上限谈判：TGA 账户余额变化将直接影响净流动性',
+      '货币市场基金规模：RRP 余额持续下降是否意味着流动性已回流市场',
+    ],
+    economy: [
+      'ISM 制造业 PMI 月度读数：是否跌破 50 荣枯线',
+      '每周初请失业金：是否出现非线性上升（>280K 为预警线）',
+      '消费者信心指数：高频情绪信号是否预示消费端走软',
+      '企业财报季：收入端是否出现普遍性预期下调',
+    ],
+    inflation_rates: [
+      '月度 CPI 与核心 PCE 数据发布日：环比变化是否出现粘性反弹',
+      'FOMC 会议声明措辞变化：是否从"维持高利率"转向"视数据而定"',
+      '大宗商品（特别是能源与铜）价格共振：是否可能推升 PPI 进而传导至 CPI',
+      '10Y 盈亏平衡通胀率（T10YIE）：市场对长期通胀的定价是否出现偏移',
+    ],
+    sentiment: [
+      'VIX 期限结构：近月 VIX 是否超过远月（形成倒挂），暗示事件性而非周期性风险',
+      '高 Beta 板块放量滞涨：动量透支信号',
+      '期权市场 Gamma 风险：Put/Call 极端偏移后的模型对冲流向',
+      '散户资金流向：meme 股、杠杆 ETF 资金规模是否出现异常',
+    ],
+  };
+
+  const combined = [...base, ...editorial[key]];
+  // Deduplicate and cap at 5
+  return [...new Set(combined)].slice(0, 5);
+}
+
+function buildRisks(key: DimensionKey, dim: DimensionAssessment): string[] {
+  const base: string[] = dim.risks ?? [];
+
+  const editorial: Record<DimensionKey, string[]> = {
+    liquidity: [
+      '若 FRED 净流动性数据接入后显示净值低于 4T，需重新评估当前流动性偏紧程度',
+      '美元持续走强（DXY > 106）将给全球风险资产带来不对称压力',
+    ],
+    economy: [
+      '当前经济评估以市场代理数据为主（置信度 ~45%），实体指标缺位导致判断精度受限',
+      '若企业盈利季报出现收入端普遍低于预期，代理信号可能失效',
+    ],
+    inflation_rates: [
+      'CPI / 核心 PCE 数据尚未接入，当前仅以名义利率作为代理——数据接入后结论可能调整',
+      '能源价格急涨可能快速改变通胀路径并推迟联储降息计划',
+      '若 10Y 收益率突破前高且曲线重新深度倒挂，则降息路径定价将面临大幅修正',
+    ],
+    sentiment: [
+      'VIX 快速抬升往往伴随流动性溢价激增，即使基本面未恶化也可能触发强制减仓',
+      '若恐惧贪婪指数降至 20 以下，需评估是否出现系统性风险而非纯情绪超跌',
+    ],
+  };
+
+  const combined = [...base, ...editorial[key]];
+  return [...new Set(combined)].slice(0, 4);
 }

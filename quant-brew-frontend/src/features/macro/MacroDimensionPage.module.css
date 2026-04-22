@@ -524,3 +524,18 @@
   font-size: 13px;
   color: var(--text-caption);
 }
+
+/* ═══ Top-level Investment Implication (drilldown page) ═══ */
+
+.investImplicationText {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 8px;
+}

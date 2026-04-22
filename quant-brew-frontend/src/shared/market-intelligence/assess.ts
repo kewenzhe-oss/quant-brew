@@ -28,7 +28,7 @@ export function assessMacroDimensions(
   sentiment: SentimentData | undefined,
 ): MacroDimensions {
   const liquidity = assessLiquidity(sentiment);
-  const economy = assessEconomy(overview);
+  const economy = assessEconomy(overview, sentiment);
   const inflationRates = assessInflationRates(sentiment);
   const sentimentDim = assessSentimentDimension(sentiment);
 
@@ -244,79 +244,252 @@ function assessLiquidity(s: SentimentData | undefined): DimensionAssessment {
   };
 }
 
-/* ── Economy (index breadth proxy; no PMI in API) ── */
+/* ── Economy (primary: FRED employment + growth; fallback: index breadth) ── */
 
+function assessEconomy(
+  o: MarketOverview | undefined,
+  s: SentimentData | undefined,
+): DimensionAssessment {
+  const emp    = s?.employment;   // UNRATE / IC4WSA / PAYEMS
+  const growth = s?.growth;       // ISM / Retail / IndProd
 
-function assessEconomy(o: MarketOverview | undefined): DimensionAssessment {
-  const indices = o?.us_indices?.slice(0, 5) ?? [];
-  if (indices.length === 0) {
-    return placeholderDimension(
-      'economy',
-      '暂无主要指数数据，经济增长预期以指数表现为代理指标。',
-    );
+  const hasEmployment = emp?.data_quality !== 'unavailable' && emp != null;
+  const hasGrowth     = growth?.data_quality !== 'unavailable' && growth != null;
+  const hasFredData   = hasEmployment || hasGrowth;
+
+  /* ── If no FRED data, fall back to index proxy ── */
+  if (!hasFredData) {
+    const indices = o?.us_indices?.slice(0, 5) ?? [];
+    if (indices.length === 0) {
+      return placeholderDimension(
+        'economy',
+        '经济实时数据（PMI / 就业 / GDP）尚未接入，评估受限。',
+      );
+    }
+    const avgChg = indices.reduce((acc, x) => acc + x.change_percent, 0) / indices.length;
+    const metrics: DimensionMetric[] = indices.slice(0, 3).map((idx) => ({
+      key: `idx_${idx.symbol ?? idx.name}`,
+      label: idx.name,
+      value: idx.price,
+      unit: 'pts',
+      change: idx.change_percent,
+      change_unit: '%',
+      context: `${idx.change_percent >= 0 ? '上涨' : '下跌'} ${Math.abs(idx.change_percent).toFixed(2)}%`,
+    }));
+    let status: DimensionStatus = 'neutral';
+    let signal: DimensionSignal = 'mixed';
+    let change: DimensionChange = 'stable';
+    if (avgChg > 0.4) { status = 'healthy'; signal = 'risk_supportive'; change = 'improving'; }
+    else if (avgChg < -0.4) { status = 'watch'; signal = 'risk_headwind'; change = 'weakening'; }
+    return {
+      status, signal, change, confidence: 45,
+      summary: `宽基指数均涨跌 ${avgChg >= 0 ? '+' : ''}${avgChg.toFixed(2)}%，` +
+        (avgChg > 0.4 ? '增长预期偏乐观。' : avgChg < -0.4 ? '增长预期趋谨慎。' : '动能中性。') +
+        ` 当前以指数广度代理经济数据，置信度 45%。`,
+      metrics,
+      why_it_matters: [
+        '宏观经济基本面是企业盈利和资产周期的终极驱动力。',
+        '当前 PMI / 就业 / 工业产出数据尚未接入，以美股宽基指数广度作为代理。',
+      ],
+      risks: avgChg < -0.4 ? ['宽基指数同步走弱，可能定价短期衰退风险。'] : [],
+      watchpoints: ['ISM PMI 扩张/收缩临界线 (50)', '初请失业金周度变化'],
+    };
   }
 
-  const avgChg =
-    indices.reduce((acc, x) => acc + x.change_percent, 0) / indices.length;
+  /* ── Primary path: real FRED employment + growth data ── */
+  const metrics: DimensionMetric[] = [];
 
-  const metrics: DimensionMetric[] = indices.slice(0, 3).map((idx) => ({
-    key: `idx_${idx.symbol ?? idx.name}`,
-    label: idx.name,
-    value: idx.price,
-    unit: 'pts',
-    change: idx.change_percent,
-    change_unit: '%',
-    context: `${idx.change_percent >= 0 ? '上涨' : '下跌'} ${Math.abs(idx.change_percent).toFixed(2)}%`,
-  }));
+  // --- Employment metrics ---
+  if (emp?.unemployment_rate != null) {
+    const ur = emp.unemployment_rate;
+    metrics.push({
+      key: 'unemployment_rate',
+      label: `失业率 UNRATE${emp.unemployment_date ? ' (' + emp.unemployment_date + ')' : ''}`,
+      value: ur,
+      unit: '%',
+      change: null,
+      change_unit: '%',
+      context: ur > 5    ? '失业率偏高，就业市场走弱' :
+               ur > 4.5  ? '失业率上升，劳工市场趋于松动' :
+               ur > 4    ? '就业市场温和放缓' :
+                           '就业市场仍具韧性',
+    });
+  }
 
+  if (emp?.initial_claims != null) {
+    const ic = emp.initial_claims;
+    metrics.push({
+      key: 'initial_jobless_claims',
+      label: `初请失业金 IC4WSA${emp.initial_claims_date ? ' (' + emp.initial_claims_date + ')' : ''}`,
+      value: ic,
+      unit: 'K',
+      change: null,
+      change_unit: 'K',
+      context: ic > 300  ? '高于 300K 警戒线，就业压力显著' :
+               ic > 250  ? '初请数量温和上升，关注趋势' :
+                           '初请维持低位，就业市场稳健',
+    });
+  }
+
+  if (emp?.nonfarm_payrolls_mom != null) {
+    const mom = emp.nonfarm_payrolls_mom;
+    metrics.push({
+      key: 'nonfarm_payrolls',
+      label: `非农新增 PAYEMS${emp.nonfarm_payrolls_date ? ' (' + emp.nonfarm_payrolls_date + ')' : ''}`,
+      value: mom,
+      unit: 'K',
+      change: null,
+      change_unit: 'K',
+      context: mom > 200  ? '非农强劲，劳工需求旺盛' :
+               mom > 100  ? '就业稳步增长' :
+               mom > 0    ? '就业增长放缓，边际走弱' :
+                            '非农负增长，就业市场压力显著',
+    });
+  }
+
+  // --- Growth metrics ---
+  if (growth?.ism_manufacturing != null) {
+    const ism = growth.ism_manufacturing;
+    metrics.push({
+      key: 'ism_manufacturing',
+      label: `ISM 制造业 PMI${growth.ism_manufacturing_date ? ' (' + growth.ism_manufacturing_date + ')' : ''}`,
+      value: ism,
+      unit: 'index',
+      change: null,
+      change_unit: '',
+      context: ism > 55   ? '制造业明显扩张，经济动能强劲' :
+               ism > 50   ? '制造业扩张区间，景气维持' :
+               ism > 48   ? '制造业接近荣枯线，动能走弱' :
+                            '制造业收缩区间，警惕衰退信号',
+    });
+  }
+
+  if (growth?.ism_services != null) {
+    const svc = growth.ism_services;
+    metrics.push({
+      key: 'ism_services',
+      label: `ISM 服务业 PMI${growth.ism_services_date ? ' (' + growth.ism_services_date + ')' : ''}`,
+      value: svc,
+      unit: 'index',
+      change: null,
+      change_unit: '',
+      context: svc > 55   ? '服务业强劲扩张，消费需求旺盛' :
+               svc > 50   ? '服务业维持扩张，经济韧性良好' :
+                            '服务业收缩，消费降温信号',
+    });
+  }
+
+  if (growth?.retail_sales_mom != null) {
+    const rsm = growth.retail_sales_mom;
+    metrics.push({
+      key: 'retail_sales_mom',
+      label: `零售销售 MoM${growth.retail_sales_date ? ' (' + growth.retail_sales_date + ')' : ''}`,
+      value: rsm,
+      unit: '%',
+      change: null,
+      change_unit: '%',
+      context: rsm > 0.5  ? '零售强劲，消费需求支撑经济' :
+               rsm > 0    ? '零售小幅增长，消费维持' :
+                            '零售走弱，消费端承压',
+    });
+  }
+
+  if (growth?.industrial_production_yoy != null) {
+    const ip = growth.industrial_production_yoy;
+    metrics.push({
+      key: 'industrial_production_yoy',
+      label: `工业产出 YoY${growth.industrial_production_date ? ' (' + growth.industrial_production_date + ')' : ''}`,
+      value: ip,
+      unit: '%',
+      change: null,
+      change_unit: '%',
+      context: ip > 2    ? '工业产出同比强劲增长' :
+               ip > 0    ? '工业产出小幅增长' :
+                           '工业产出同比萎缩，制造业疲软',
+    });
+  }
+
+  /* ── Status / Signal / Change derivation ── */
   let status: DimensionStatus = 'neutral';
   let signal: DimensionSignal = 'mixed';
   let change: DimensionChange = 'stable';
 
-  if (avgChg > 0.4) {
-    status = 'healthy';
-    signal = 'risk_supportive';
-    change = 'improving';
-  } else if (avgChg < -0.4) {
-    status = 'watch';
-    signal = 'risk_headwind';
-    change = 'weakening';
+  // ISM PMI: primary driver (expansion > 50 = healthy)
+  const ismM = growth?.ism_manufacturing;
+  const ismS = growth?.ism_services;
+  const ur   = emp?.unemployment_rate;
+  const ic   = emp?.initial_claims;
+
+  let pmiScore = 0;   // + = expansionary, - = contractionary
+  if (ismM != null) pmiScore += ismM > 50 ? 1 : ismM < 48 ? -2 : -1;
+  if (ismS != null) pmiScore += ismS > 50 ? 1 : -1;
+
+  let empScore = 0;   // + = strong, - = stressed
+  if (ur  != null) empScore += ur < 4   ? 2 : ur < 4.5 ? 1 : ur < 5 ? 0 : -1;
+  if (ic  != null) empScore += ic < 220 ? 1 : ic < 280 ? 0 : -1;
+
+  const totalScore = pmiScore + empScore;
+
+  if (totalScore >= 3) {
+    status = 'healthy'; signal = 'risk_supportive'; change = 'improving';
+  } else if (totalScore >= 1) {
+    status = 'neutral'; signal = 'mixed';
+  } else if (totalScore >= -1) {
+    status = 'watch'; signal = 'mixed'; change = 'weakening';
+  } else {
+    status = 'pressured'; signal = 'risk_headwind'; change = 'weakening';
   }
 
-  const why_it_matters = [
-    '宏观经济基本面是企业盈利和资产周期的终极驱动力。',
-    '当前系统尚未接入实时的 PMI / 职位空缺 / GDP Nowcast 数据，因此经济增长预期以美股核心宽基指数的广度表现（Index Breadth）作为代理指标。',
-  ];
+  /* ── Confidence ── */
+  const confidence = hasEmployment && hasGrowth ? 72 :
+                     hasEmployment || hasGrowth  ? 55 : 45;
 
-  const risks = [];
-  if (avgChg < -0.4) risks.push('宽基指数同步走弱，可能定价了短期的衰退风险。');
-  if (indices.length < 3) risks.push('核心指数样本不足，经济动能代理数据的置信度受限。');
+  /* ── Risks ── */
+  const risks: string[] = [];
+  if (ismM != null && ismM < 48)    risks.push(`ISM 制造业 PMI ${ismM} 进入收缩区间，制造业景气恶化。`);
+  if (ismS != null && ismS < 50)    risks.push(`ISM 服务业 PMI ${ismS} 跌破荣枯线，服务业放缓风险上升。`);
+  if (ur   != null && ur   > 4.5)   risks.push(`失业率升至 ${ur}%，就业市场松动可能压制消费。`);
+  if (ic   != null && ic   > 280)   risks.push(`初请失业金 ${ic}K 超过 280K 警戒区，就业压力显现。`);
 
+  /* ── Watchpoints ── */
   const watchpoints = [
-    'ISM 制造业/非制造业 PMI 读数的衰退预警线 (50)',
-    '每周初请失业金人数是否出现非线性上升',
+    'ISM 制造业/服务业 PMI 月度数据：扩张/收缩临界线 50',
+    '每周初请失业金：是否突破 300K 非线性上升',
+    '月度非农新增：共识预期 vs 实际偏差',
+    '零售销售数据：消费端韧性是否开始动摇',
   ];
 
-  const summary =
-    `宽基指数平均涨跌幅 ${avgChg >= 0 ? '+' : ''}${avgChg.toFixed(2)}%，` +
-    (avgChg > 0.4 ? '整体偏多，增长预期相对乐观。' : avgChg < -0.4 ? '宽基走弱，增长预期趋于谨慎。' : '涨跌互现，动能中性。') +
-    ` 当前以指数广度作为经济动能代理（置信度 45%，实体数据接入后更新）。`;
+  /* ── Summary ── */
+  const summaryParts: string[] = [];
+  if (ismM != null) summaryParts.push(`ISM 制造业 ${ismM}${ismM > 50 ? '（扩张）' : '（收缩）'}`);
+  if (ismS != null) summaryParts.push(`ISM 服务业 ${ismS}${ismS > 50 ? '（扩张）' : '（收缩）'}`);
+  if (ur   != null) summaryParts.push(`失业率 ${ur}%`);
+  if (ic   != null) summaryParts.push(`初请 ${ic}K`);
+
+  const summaryConclusion =
+    signal === 'risk_headwind'  ? '经济动能走弱，谨慎风险暴露。' :
+    signal === 'risk_supportive' ? '经济基本面支撑风险资产。' :
+                                  '经济动能中性，维持观察。';
+
+  const summary = (summaryParts.length ? summaryParts.join('，') + '。' : '') +
+    summaryConclusion +
+    ` 置信度 ${confidence}%（FRED ${hasEmployment && hasGrowth ? 'employment+growth' : hasEmployment ? 'employment' : 'growth'} 实时数据）。`;
+
+  const why_it_matters = [
+    '宏观经济基本面直接影响企业盈利周期和资产估值。PMI < 50 往往先行于企业盈利下调。',
+    hasEmployment && hasGrowth
+      ? `当前以 FRED 实时数据（UNRATE / IC4WSA / ISM PMI）评估，置信度 ${confidence}%。`
+      : '部分 FRED 数据已接入，持续补全中。',
+  ];
 
   return {
-    status,
-    signal,
-    change,
-    // 45 = index-breadth proxy only; will increase when PMI/jobless data is connected
-    confidence: 45,
-    summary,
-    metrics,
-    why_it_matters,
-    risks,
-    watchpoints,
+    status, signal, change, confidence, summary, metrics,
+    why_it_matters, risks, watchpoints,
   };
 }
 
-/* ── Inflation & rates (10Y + curve) ── */
+
+/* ── Inflation & rates (CPI/PCE primary; 10Y + curve proxy fallback) ── */
 
 function assessInflationRates(s: SentimentData | undefined): DimensionAssessment {
   if (!s?.us10y) {
@@ -326,76 +499,222 @@ function assessInflationRates(s: SentimentData | undefined): DimensionAssessment
     );
   }
 
-  const y10 = s.us10y.value;
+  const y10    = s.us10y.value;
+  const y10Chg = s.us10y.change ?? 0;
   const spread = s.yield_curve?.spread;
+  const inf    = s.inflation;   // may be undefined when FRED is down
 
-  const metrics: DimensionMetric[] = [
-    {
-      key: 'us10y',
-      label: '10Y 美债（通胀预期锚）',
-      value: y10,
-      unit: '%',
-      change: s.us10y.change,
-      change_unit: '%',
-      context: y10 > 4.5 ? '名义利率偏高区间' : y10 > 3.5 ? '中性偏高' : '相对温和',
-    },
-  ];
+  const metrics: DimensionMetric[] = [];
 
-  if (spread !== undefined) {
+  /* ── Primary: real CPI / PCE metrics ── */
+  if (inf?.cpi_yoy != null) {
+    const cpiVal = inf.cpi_yoy;
     metrics.push({
-      key: 'yield_spread_2s10s',
-      label: '曲线利差',
-      value: spread,
-      unit: 'bps',
-      change: null,
-      change_unit: 'bps',
-      context: spread < 0 ? '曲线倒挂，关注衰退与通胀路径' : '倒挂缓解',
+      key:         'cpi_yoy',
+      label:       `CPI 同比 (CPIAUCSL${inf.cpi_date ? ' ' + inf.cpi_date : ''})`,
+      value:       cpiVal,
+      unit:        '%',
+      change:      null,
+      change_unit: '%',
+      context:     cpiVal > 4   ? '通胀严重偏高，远超 2% 目标' :
+                   cpiVal > 3   ? '通胀粘性，降息路径受制约' :
+                   cpiVal > 2.5 ? '通胀高于目标但边际回落' :
+                   cpiVal > 2   ? '接近目标，去通胀进程延续' :
+                                  '通胀受控，降息空间较充足',
     });
   }
 
+  if (inf?.pce_core_yoy != null) {
+    const pceVal = inf.pce_core_yoy;
+    metrics.push({
+      key:         'pce_core_yoy',
+      label:       `核心 PCE 同比 (PCEPILFE${inf.pce_core_date ? ' ' + inf.pce_core_date : ''})`,
+      value:       pceVal,
+      unit:        '%',
+      change:      null,
+      change_unit: '%',
+      context:     pceVal > 3.5 ? '核心通胀严重粘性，联储维持高利率压力大' :
+                   pceVal > 2.8 ? '核心PCE粘性，降息预期面临修正风险' :
+                   pceVal > 2.3 ? '核心PCE趋缓，去通胀叙事维持' :
+                                  '核心PCE接近目标，降息空间逐步打开',
+    });
+  }
+
+  /* ── Secondary: rates metrics (always shown) ── */
+  metrics.push({
+    key:         'us10y',
+    label:       '10Y 美债（名义利率锚）',
+    value:       y10,
+    unit:        '%',
+    change:      y10Chg,
+    change_unit: '%',
+    context:     y10 > 4.5 ? '名义利率偏高区间' :
+                 y10 > 3.5 ? '中性偏高' : '相对温和',
+  });
+
+  if (spread !== undefined) {
+    metrics.push({
+      key:         'yield_spread_2s10s',
+      label:       '曲线利差 (2s10s)',
+      value:       spread,
+      unit:        'bps',
+      change:      null,
+      change_unit: 'bps',
+      context:     spread < 0  ? '曲线倒挂，关注衰退路径' :
+                   spread < 20 ? '曲线刚转正，倒挂解除信号' :
+                                 '曲线正斜率，复苏定价中',
+    });
+  }
+
+  /* ── P1: 30Y yield (rates_extended) ── */
+  const re = s.rates_extended;
+  if (re?.us30y != null) {
+    metrics.push({
+      key:         'us30y_yield',
+      label:       '30Y 美债收益率',
+      value:       re.us30y.value,
+      unit:        '%',
+      change:      re.us30y.change,
+      change_unit: '%',
+      context:     re.us30y.value > 4.8 ? '超长端偏高，抵押贷款成本受压' :
+                   re.us30y.value > 4.2 ? '超长端中性偏高' : '超长端相对可控',
+    });
+  }
+
+  /* ── P1: Fed Funds Rate (rates_extended) ── */
+  if (re?.fed_funds != null) {
+    metrics.push({
+      key:         'fed_funds_rate',
+      label:       '联邦基金有效利率 (DFF)',
+      value:       re.fed_funds.value,
+      unit:        '%',
+      change:      re.fed_funds.change,
+      change_unit: '%',
+      context:     re.fed_funds.value > 5 ? '利率处于限制性区间' :
+                   re.fed_funds.value > 3.5 ? '中性偏紧' : '中性区间',
+    });
+  }
+
+  /* ── P1: WTI + Gold (commodities_ext) ── */
+  const cx = s.commodities_ext;
+  if (cx?.wti != null) {
+    metrics.push({
+      key:         'wti_crude',
+      label:       'WTI 原油',
+      value:       cx.wti.value,
+      unit:        'USD',
+      change:      cx.wti.change_pct,
+      change_unit: '%',
+      context:     cx.wti.value > 90 ? '油价偏高，能源通胀压力上升' :
+                   cx.wti.value > 70 ? '油价中性区间' : '油价偏低，通胀压力缓解',
+    });
+  }
+
+  if (cx?.gold != null) {
+    metrics.push({
+      key:         'gold',
+      label:       '黄金 XAUUSD',
+      value:       cx.gold.value,
+      unit:        'USD',
+      change:      cx.gold.change_pct,
+      change_unit: '%',
+      context:     cx.gold.value > 2500 ? '黄金强势，实际利率偏低或避险情绪主导' :
+                   cx.gold.value > 2000 ? '黄金偏强，通胀预期或避险支撑' :
+                                          '黄金回落，实际利率偏高',
+    });
+  }
+
+  /* ── Status / signal / change derivation ── */
   let status: DimensionStatus = 'neutral';
   let signal: DimensionSignal = 'mixed';
   let change: DimensionChange = 'stable';
 
-  if (y10 > 4.6 && (spread === undefined || spread < -20)) {
-    status = 'watch';
-    signal = 'risk_headwind';
-  } else if (s.us10y.change < -0.02) {
-    change = 'improving';
-    signal = 'risk_supportive';
-  } else if (s.us10y.change > 0.03) {
-    change = 'weakening';
+  const hasCPI = inf?.cpi_yoy != null;
+  const hasPCE = inf?.pce_core_yoy != null;
+
+  if (hasCPI || hasPCE) {
+    // Primary path: use real inflation data
+    const cpiVal = inf!.cpi_yoy ?? inf!.pce_core_yoy!;
+    const pceVal = inf!.pce_core_yoy ?? inf!.cpi_yoy!;
+    const avgInf = (cpiVal + pceVal) / 2;
+
+    if (avgInf > 3.5) {
+      status = 'pressured'; signal = 'risk_headwind'; change = 'weakening';
+    } else if (avgInf > 2.8) {
+      status = 'watch';    signal = 'risk_headwind';
+    } else if (avgInf > 2.2) {
+      status = 'neutral';  signal = 'mixed';
+    } else {
+      status = 'healthy';  signal = 'risk_supportive'; change = 'improving';
+    }
+
+    // Reinforce with rates direction
+    if (y10Chg < -0.02 && status !== 'pressured') change = 'improving';
+    if (y10Chg >  0.03) change = change === 'improving' ? 'stable' : 'weakening';
+
+  } else {
+    // Proxy fallback: use 10Y level + curve
+    if (y10 > 4.6 && (spread === undefined || spread < -20)) {
+      status = 'watch'; signal = 'risk_headwind';
+    } else if (y10Chg < -0.02) {
+      change = 'improving'; signal = 'risk_supportive';
+    } else if (y10Chg > 0.03) {
+      change = 'weakening';
+    }
   }
 
-  const why_it_matters = [
-    '高通胀会迫使央行收紧货币政策，压制估值；而在去通胀周期，利率回落往往提供估值支撑。',
-    '当前系统暂无实时盈亏平衡通胀率先行数据，故使用名义利率水位结合倒挂形态作为通胀及降息路径重定价的代理测度。',
-  ];
+  /* ── Confidence ── */
+  const confidence = hasCPI && hasPCE ? 82 :
+                     hasCPI || hasPCE ? 72 :
+                     spread !== undefined ? 66 : 52;
 
-  const risks = [];
-  if (y10 > 4.6) risks.push('名义利率长期处于偏高区间，可能触发再通胀担忧。');
-  if (s.us10y.change > 0.03) risks.push('短线利率快速上升对成长股风格形成估值逆风。');
+  /* ── Risks ── */
+  const risks: string[] = [];
+  if (inf?.cpi_yoy != null && inf.cpi_yoy > 3) {
+    risks.push(`CPI 同比 ${inf.cpi_yoy.toFixed(1)}%，通胀粘性已明显超过联储 2% 目标，降息预期面临修正。`);
+  }
+  if (inf?.pce_core_yoy != null && inf.pce_core_yoy > 2.8) {
+    risks.push(`核心 PCE ${inf.pce_core_yoy.toFixed(1)}%，联储首要参考指标仍偏高，鸽派转向空间受限。`);
+  }
+  if (y10 > 4.6) risks.push('名义利率长期处于偏高区间，可能触发再通胀担忧或信用利差重定价。');
+  if (y10Chg > 0.03) risks.push('短线利率快速上升对高估值成长股形成折现率逆风。');
 
+  /* ── Watchpoints ── */
   const watchpoints = [
-    '核心 CPI 与 PCE 环比数据是否出现粘性反弹',
-    '大宗商品（特别是能源与工业金属）的共振上涨信号',
+    '月度 CPI 与核心 PCE 环比数据：是否出现连续粘性反弹（尤其是住房分项）',
+    'FOMC 会议声明措辞：是否从"维持高利率"转向"视数据而定"',
+    '大宗商品共振（油价 + 铜）：是否引发 PPI → CPI 传导链',
+    '10Y 盈亏平衡通胀率（T10YIE）：市场对长期通胀锚定是否出现漂移',
   ];
 
-  const summary =
-    `10年期美债 ${y10.toFixed(2)}%` +
-    (signal === 'risk_headwind' ? '，利率偏高区间，通胀路径存在不确定性。' : signal === 'risk_supportive' ? '，利率回落，去通胀叙事延续。' : '，利率中性震荡，等待通胀数据确认。') +
-    (spread !== undefined ? ` 曲线利差 ${spread.toFixed(0)}bps。` : '');
+  /* ── Summary ── */
+  let summaryParts: string[] = [];
+  if (hasCPI) summaryParts.push(`CPI 同比 ${inf!.cpi_yoy!.toFixed(1)}%`);
+  if (hasPCE) summaryParts.push(`核心 PCE ${inf!.pce_core_yoy!.toFixed(1)}%`);
+  summaryParts.push(`10Y 利率 ${y10.toFixed(2)}%`);
+  if (spread !== undefined) summaryParts.push(`曲线 ${spread.toFixed(0)}bps`);
+
+  const summaryConclusion =
+    signal === 'risk_headwind'  ? '通胀粘性制约降息路径，利率环境对风险资产构成逆风。' :
+    signal === 'risk_supportive'? '去通胀进程清晰，降息路径逐步打开，利率环境边际改善。' :
+                                  '通胀路径待进一步确认，利率中性区间震荡。';
+
+  const proxyNote = (!hasCPI && !hasPCE)
+    ? ` CPI / PCE 数据待接入（FRED CPIAUCSL / PCEPILFE），当前以名义利率代理，置信度 ${confidence}%。`
+    : '';
+
+  const summary = summaryParts.join('，') + '。' + summaryConclusion + proxyNote;
+
+  const why_it_matters = [
+    '通胀决定美联储政策空间。高通胀迫使维持高利率，压制估值；去通胀打开降息空间，提振估值。',
+    hasCPI || hasPCE
+      ? `当前以 FRED 月度实际数据（CPIAUCSL / PCEPILFE）评估，置信度 ${confidence}%。`
+      : '当前 CPI / PCE 数据尚未接入，以名义利率水位与曲线形态作为通胀路径的代理测度，置信度受限。',
+  ];
 
   return {
-    status,
-    signal,
-    change,
-    confidence: spread !== undefined ? 66 : 52,
-    summary,
-    metrics,
-    why_it_matters,
-    risks,
-    watchpoints,
+    status, signal, change, confidence, summary, metrics,
+    why_it_matters, risks, watchpoints,
   };
 }
 
@@ -524,6 +843,155 @@ function placeholderDimension(
     watchpoints: [],
   };
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Exported dimension-level assessment functions
+   Used by MacroDomainPage tabs (growth, employment as separate tabs)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * Dimension-level: Growth only (ISM / Retail / Industrial Production)
+ * For /macro/economy/growth tab.
+ */
+export function assessGrowthDimension(s: SentimentData | undefined): DimensionAssessment {
+  const growth = s?.growth;
+  if (!growth || growth.data_quality === 'unavailable') {
+    return placeholderDimension('economy', 'ISM PMI / 零售 / 工业产出数据尚未接入。');
+  }
+
+  const metrics: DimensionMetric[] = [];
+  const ismM = growth.ism_manufacturing;
+  const ismS = growth.ism_services;
+  const rs   = growth.retail_sales_mom;
+  const ip   = growth.industrial_production_yoy;
+
+  if (ismM != null) metrics.push({
+    key: 'ism_manufacturing', label: `ISM 制造业 PMI${growth.ism_manufacturing_date ? ' (' + growth.ism_manufacturing_date + ')' : ''}`,
+    value: ismM, unit: 'index', change: null, change_unit: 'pts',
+    context: ismM > 52 ? '扩张强劲' : ismM > 50 ? '温和扩张' : ismM > 47 ? '边际收缩' : '深度收缩',
+  });
+
+  if (ismS != null) metrics.push({
+    key: 'ism_services', label: `ISM 服务业 PMI${growth.ism_services_date ? ' (' + growth.ism_services_date + ')' : ''}`,
+    value: ismS, unit: 'index', change: null, change_unit: 'pts',
+    context: ismS > 52 ? '服务业景气' : ismS > 50 ? '温和扩张' : '服务业收缩',
+  });
+
+  if (rs != null) metrics.push({
+    key: 'retail_sales_mom', label: `零售销售 MoM${growth.retail_sales_date ? ' (' + growth.retail_sales_date + ')' : ''}`,
+    value: rs, unit: '%', change: null, change_unit: '%',
+    context: rs > 0.5 ? '消费强劲' : rs > 0 ? '小幅增长' : '消费走弱',
+  });
+
+  if (ip != null) metrics.push({
+    key: 'industrial_production_yoy', label: `工业产出 YoY${growth.industrial_production_date ? ' (' + growth.industrial_production_date + ')' : ''}`,
+    value: ip, unit: '%', change: null, change_unit: '%',
+    context: ip > 2 ? '工业产出强劲' : ip > 0 ? '小幅增长' : '工业产出萎缩',
+  });
+
+  let status: DimensionStatus = 'neutral';
+  let signal: DimensionSignal = 'mixed';
+  let change: DimensionChange = 'stable';
+  let score = 0;
+  if (ismM != null) score += ismM > 50 ? 1 : ismM < 48 ? -2 : -1;
+  if (ismS != null) score += ismS > 50 ? 1 : -1;
+  if (rs  != null) score += rs > 0 ? 0.5 : -0.5;
+  if (score >= 2)  { status = 'healthy'; signal = 'risk_supportive'; change = 'improving'; }
+  else if (score >= 0) { status = 'neutral'; signal = 'mixed'; }
+  else if (score >= -1.5) { status = 'watch'; signal = 'mixed'; change = 'weakening'; }
+  else { status = 'pressured'; signal = 'risk_headwind'; change = 'weakening'; }
+
+  const confidence = growth.data_quality === 'real' ? 72 : 48;
+  const parts: string[] = [];
+  if (ismM != null) parts.push(`ISM 制造业 ${ismM}${ismM > 50 ? '↑' : '↓'}`);
+  if (ismS != null) parts.push(`ISM 服务业 ${ismS}${ismS > 50 ? '↑' : '↓'}`);
+  if (rs != null) parts.push(`零售 MoM ${rs > 0 ? '+' : ''}${rs.toFixed(1)}%`);
+  const summary = (parts.length ? parts.join('，') + '。' : '') +
+    (signal === 'risk_supportive' ? '经济扩张动能支撑风险资产。' :
+     signal === 'risk_headwind' ? '经济动能走弱，注意盈利下修风险。' :
+     '经济动能中性，维持观察。');
+
+  return {
+    status, signal, change, confidence, summary, metrics,
+    why_it_matters: ['PMI < 50 往往领先企业盈利下调 2-3 个季度，是最重要的景气先行指标。'],
+    risks: ismM != null && ismM < 48 ? [`ISM 制造业 ${ismM} 深度收缩，制造业衰退压力上升。`] : [],
+    watchpoints: ['ISM PMI 月度数据：是否持续低于 50', '零售销售：消费韧性是否开始崩塌'],
+  };
+}
+
+/**
+ * Dimension-level: Employment only (UNRATE / IC4WSA / PAYEMS)
+ * For /macro/economy/employment tab.
+ */
+export function assessEmploymentDimension(s: SentimentData | undefined): DimensionAssessment {
+  const emp = s?.employment;
+  if (!emp || emp.data_quality === 'unavailable') {
+    return placeholderDimension('economy', '就业数据（UNRATE / IC4WSA / PAYEMS）尚未接入。');
+  }
+
+  const metrics: DimensionMetric[] = [];
+  const ur = emp.unemployment_rate;
+  const ic = emp.initial_claims;
+  const pfm = emp.nonfarm_payrolls_mom;
+
+  if (ur != null) metrics.push({
+    key: 'unemployment_rate', label: `失业率 UNRATE${emp.unemployment_date ? ' (' + emp.unemployment_date + ')' : ''}`,
+    value: ur, unit: '%', change: null, change_unit: '%',
+    context: ur < 3.8 ? '劳动市场极度紧张' : ur < 4.2 ? '就业市场健康' : ur < 5 ? '就业开始松动' : '就业市场压力显著',
+  });
+
+  if (ic != null) metrics.push({
+    key: 'initial_claims', label: `初请失业金 IC4WSA${emp.initial_claims_date ? ' (' + emp.initial_claims_date + ')' : ''}`,
+    value: ic, unit: 'K', change: null, change_unit: 'K',
+    context: ic < 220 ? '就业市场紧张' : ic < 280 ? '健康区间' : ic < 350 ? '压力升温' : '就业压力显著',
+  });
+
+  if (pfm != null) metrics.push({
+    key: 'nonfarm_payrolls', label: `非农新增 MoM${emp.nonfarm_payrolls_date ? ' (' + emp.nonfarm_payrolls_date + ')' : ''}`,
+    value: pfm, unit: 'K', change: null, change_unit: 'K',
+    context: pfm > 200 ? '强劲新增就业' : pfm > 100 ? '健康增速' : pfm > 0 ? '放缓但仍正增长' : '就业萎缩',
+  });
+
+  let status: DimensionStatus = 'neutral';
+  let signal: DimensionSignal = 'mixed';
+  let change: DimensionChange = 'stable';
+  let score = 0;
+  if (ur != null) score += ur < 4 ? 2 : ur < 4.5 ? 1 : ur < 5 ? 0 : -1;
+  if (ic != null) score += ic < 220 ? 1 : ic < 280 ? 0 : -1;
+  if (pfm != null) score += pfm > 150 ? 1 : pfm > 0 ? 0 : -1;
+  if (score >= 3) { status = 'healthy'; signal = 'risk_supportive'; change = 'improving'; }
+  else if (score >= 1) { status = 'neutral'; signal = 'mixed'; }
+  else if (score >= -1) { status = 'watch'; signal = 'mixed'; change = 'weakening'; }
+  else { status = 'pressured'; signal = 'risk_headwind'; change = 'weakening'; }
+
+  const confidence = emp.data_quality === 'real' ? 73 : 45;
+  const parts: string[] = [];
+  if (ur != null) parts.push(`失业率 ${ur}%`);
+  if (ic != null) parts.push(`初请 ${ic}K`);
+  if (pfm != null) parts.push(`非农 ${pfm > 0 ? '+' : ''}${pfm}K`);
+  const summary = (parts.length ? parts.join('，') + '。' : '') +
+    (signal === 'risk_supportive' ? '就业市场韧性支撑消费和风险偏好。' :
+     signal === 'risk_headwind'   ? '就业市场松动，消费端韧性存疑。' :
+     '就业市场中性，维持观察。');
+
+  return {
+    status, signal, change, confidence, summary, metrics,
+    why_it_matters: ['就业是消费端韧性的底层支撑，也是 Fed 降息决策的关键变量。'],
+    risks: ic != null && ic > 350 ? ['初请失业金超过 350K，就业市场显著恶化。'] : [],
+    watchpoints: ['初请失业金是否突破 300K', '非农就业是否持续低于 100K', 'JOLTS 职位空缺是否급速下降'],
+  };
+}
+
+/**
+ * Combined helper for MacroDomainPage (economy domain: both tabs at once)
+ */
+export function assessGrowthAndEmployment(s: SentimentData | undefined) {
+  return {
+    growth:     assessGrowthDimension(s),
+    employment: assessEmploymentDimension(s),
+  };
+}
+
 
 /* ── Aggregate verdict ── */
 

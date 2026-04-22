@@ -1,0 +1,59 @@
+{
+  "fear_greed": {
+    "value": 29,
+    "classification": "Fear",
+    "timestamp": 1776643200,
+    "source": "alternative.me"
+  },
+  "vix": {
+    "value": 17.48,
+    "change": -2.56,
+    "level": "low",
+    "interpretation": "低波动 - 市场稳定",
+    "interpretation_en": "Low - Market Stable"
+  },
+  "dxy": {
+    "value": 98.28,
+    "change": 0.18,
+    "level": "neutral",
+    "interpretation": "美元中性 - 市场均衡",
+    "interpretation_en": "Neutral - Market balanced"
+  },
+  "yield_curve": {
+    "yield_10y": 4.25,
+    "yield_2y": 3.61,
+    "spread": 0.64,
+    "change": -0.009,
+    "level": "normal",
+    "signal": "bullish",
+    "interpretation": "正常曲线 - 经济健康",
+    "interpretation_en": "Normal - Healthy economy"
+  },
+  "vxn": {
+    "value": 0,
+    "level": "unknown"
+  },
+  "gvz": {
+    "value": 0,
+    "level": "unknown"
+  },
+  "vix_term": {
+    "value": 0.852,
+    "vix": 17.48,
+    "vix3m": 20.51,
+    "change": -1.33,
+    "level": "complacent",
+    "signal": "bullish",
+    "interpretation": "深度正价差 - 市场自满",
+    "interpretation_en": "Deep Contango - Market complacent"
+  },
+  "fed_liquidity": {
+    "walcl": null,
+    "tga": null,
+    "rrp": null,
+    "net_liquidity": null,
+    "data_quality": "unavailable",
+    "source": "FRED via yfinance (WALCL, WTREGEN, RRPONTSYD)"
+  },
+  "timestamp": 1776646527
+}

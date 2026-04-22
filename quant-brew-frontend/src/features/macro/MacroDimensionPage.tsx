@@ -1,21 +1,31 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useMarketIntelligence } from '@/shared/market-intelligence';
-import { DIMENSION_KEYS } from '@/shared/market-intelligence/constants';
+import { resolveDomain } from '@/shared/market-intelligence/constants';
 import { buildDimensionDetail } from '@/shared/market-intelligence/dimensionDetail';
-import type { DimensionKey } from '@/shared/market-intelligence/types';
 import { DimensionVerdictBlock } from './DimensionVerdictBlock';
+import { BreakdownSection } from './components/BreakdownSection';
 import { DimensionInterpretationBlock } from './DimensionInterpretationBlock';
 import { DimensionModuleGroup } from './DimensionModuleGroup';
 import { DimensionWatchpoints } from './DimensionWatchpoints';
 import styles from './MacroDimensionPage.module.css';
 
 export function MacroDimensionPage() {
-  const { dimensionKey } = useParams<{ dimensionKey: string }>();
+  // Layer 3 route: /macro/:domainKey/:dimensionKey
+  // dimensionKey here is the sub-dimension slug (e.g. 'us', 'growth', 'inflation', 'fear-greed')
+  // We resolve the parent DimensionKey from domainKey for the actual data lookup
+  const { domainKey, dimensionKey } = useParams<{ domainKey: string; dimensionKey: string }>();
   const { snapshot, isLoading } = useMarketIntelligence();
 
-  const isValid = dimensionKey && (DIMENSION_KEYS as readonly string[]).includes(dimensionKey);
+  // Resolve domain to get the internal DimensionKey
+  const domain = domainKey ? resolveDomain(domainKey) : null;
+  if (!domain) return <Navigate to="/macro" replace />;
 
-  if (!isValid) return <Navigate to="/macro" replace />;
+  // Validate sub-dimension slug
+  const isValidDim = dimensionKey && domain.dims.some((d) => d.slug === dimensionKey);
+  if (!isValidDim) return <Navigate to={`/macro/${domainKey}`} replace />;
+
+  // Find current sub-dimension metadata
+  const currentDim = domain.dims.find((d) => d.slug === dimensionKey)!;
 
   if (isLoading) {
     return (
@@ -25,21 +35,27 @@ export function MacroDimensionPage() {
     );
   }
 
-  const detail = buildDimensionDetail(dimensionKey as DimensionKey, snapshot);
+  // Build detail using the domain's DimensionKey (same assess.ts data for all dims in domain)
+  // Passing currentDim to automatically generate the Breakdown outline from the config
+  const detail = buildDimensionDetail(domain.key as any, snapshot, currentDim);
 
   return (
     <div className={styles.page}>
 
-      {/* Nav back */}
+      {/* Breadcrumb: Overview → Domain → Dimension */}
       <nav className={styles.nav}>
-        <Link to="/macro" className={styles.backLink}>← 宏观总览</Link>
+        <Link to="/macro" className={styles.backLink}>宏观总览</Link>
+        <span style={{ color: '#404040', margin: '0 0.4rem' }}>›</span>
+        <Link to={`/macro/${domainKey}`} className={styles.backLink}>{domain.title}</Link>
+        <span style={{ color: '#404040', margin: '0 0.4rem' }}>›</span>
+        <span style={{ color: '#a3a3a3', fontSize: '0.85rem' }}>{currentDim.title}</span>
       </nav>
 
       {/* 1. Question definition */}
       <header className={styles.questionBlock}>
         <p className={styles.questionLabel}>本页回答的问题</p>
-        <h1 className={styles.question}>{detail.coreQuestion}</h1>
-        <p className={styles.dimensionLabel}>{detail.title}维度</p>
+        <h1 className={styles.question}>{currentDim.question}</h1>
+        <p className={styles.dimensionLabel}>{domain.title} · {currentDim.title}</p>
       </header>
 
       <div className={styles.body}>
@@ -48,21 +64,33 @@ export function MacroDimensionPage() {
         <DimensionVerdictBlock verdict={detail.verdict} summary={detail.verdict.oneLiner} />
 
         {/* 2b. Liquidity-specific: two overview indicators */}
-        {dimensionKey === 'liquidity' && <LiquidityOverviewStrip detail={detail} />}
+        {domain.key === 'liquidity' && <LiquidityOverviewStrip detail={detail} />}
 
         {/* 3. Three-part interpretation */}
         <DimensionInterpretationBlock interpretation={detail.interpretation} />
 
-        {/* 4. Causal modules */}
-        <DimensionModuleGroup modules={detail.modules} />
+        {/* 3b. Investment implication */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>维度指导意义</h2>
+          <p className={styles.investImplicationText}>{detail.investmentImplication}</p>
+        </section>
 
-        {/* 5. Watchpoints */}
+        {/* 4. BreakdownSection: purely structure */}
+        <BreakdownSection outline={detail.breakdownOutline} />
+
+        {/* 5. EvidenceSectionGroup: real data, charts, modules */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>底层证据：观测与图表</h2>
+          <DimensionModuleGroup modules={detail.modules} />
+        </section>
+
+        {/* 6. Watchpoints */}
         <DimensionWatchpoints watchpoints={detail.watchpoints} risks={detail.risks} />
 
       </div>
 
       <footer className={styles.pageFooter}>
-        <Link to="/macro" className={styles.backLink}>← 返回宏观总览</Link>
+        <Link to={`/macro/${domainKey}`} className={styles.backLink}>← 返回{domain.title}</Link>
         <span className={styles.footerNote}>
           置信度 {detail.verdict.confidence}% · {detail.verdict.dataQualityLabel}
         </span>
@@ -70,6 +98,7 @@ export function MacroDimensionPage() {
 
     </div>
   );
+
 }
 
 /* ── Two top-level liquidity overview indicators ──

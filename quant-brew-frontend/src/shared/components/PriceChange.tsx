@@ -30,7 +30,7 @@ export function PriceChange({
         </span>
       )}
       <span className={`${styles.percent} ${colorClass}`}>
-        {sign}{changePercent.toFixed(2)}%
+        {sign}{(changePercent ?? 0).toFixed(2)}%
       </span>
     </span>
   );

@@ -29,7 +29,7 @@ function HeatmapSection() {
             <span
               className={`${styles.sectorChange} ${s.change_percent >= 0 ? styles.up : styles.down}`}
             >
-              {s.change_percent >= 0 ? '+' : ''}{s.change_percent.toFixed(2)}%
+              {s.change_percent >= 0 ? '+' : ''}{(s.change_percent ?? 0).toFixed(2)}%
             </span>
           </div>
         ))}
@@ -71,7 +71,7 @@ function ForexSection() {
         {forex.slice(0, 6).map((pair) => (
           <div key={pair.symbol ?? pair.name} className={styles.forexRow}>
             <span className={styles.forexName}>{pair.name}</span>
-            <span className={styles.forexPrice}>{pair.price.toFixed(4)}</span>
+            <span className={styles.forexPrice}>{(pair.price ?? 0).toFixed(4)}</span>
             <PriceChange changePercent={pair.change_percent} />
           </div>
         ))}

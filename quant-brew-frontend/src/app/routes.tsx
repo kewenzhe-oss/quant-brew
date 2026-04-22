@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
 import { HomePage } from '@/features/home/HomePage';
 import { MacroPage } from '@/features/macro/MacroPage';
+import { MacroDomainPage } from '@/features/macro/MacroDomainPage';
 import { MacroDimensionPage } from '@/features/macro/MacroDimensionPage';
 import { ResearchPage } from '@/features/research/ResearchPage';
 import { WatchlistPlaceholder } from '@/features/watchlist/WatchlistPlaceholder';
@@ -13,8 +14,12 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
+      // Layer 1 — Macro overview
       { path: 'macro', element: <MacroPage /> },
-      { path: 'macro/:dimensionKey', element: <MacroDimensionPage /> },
+      // Layer 2 — Domain page  (/macro/liquidity, /macro/economy, …)
+      { path: 'macro/:domainKey', element: <MacroDomainPage /> },
+      // Layer 3 — Detail/dimension page  (/macro/liquidity/us, /macro/economy/growth, …)
+      { path: 'macro/:domainKey/:dimensionKey', element: <MacroDimensionPage /> },
       { path: 'research', element: <ResearchPage /> },
       { path: 'research/:market/:symbol', element: <ResearchPage /> },
       { path: 'watchlist', element: <WatchlistPlaceholder /> },
