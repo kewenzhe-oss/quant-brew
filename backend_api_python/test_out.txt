@@ -1,0 +1,19 @@
+Testing /api/equity/info?symbol=AAPL...
+Status: 200
+Data keys: ['symbol', 'company_name', 'sector', 'industry', 'description', 'website', 'country', 'currency', 'exchange', 'employees', 'market_cap', 'pe_ratio', 'forward_pe', 'peg_ratio', 'price_to_book', 'dividend_yield', 'shares_outstanding', 'float_shares', 'held_percent_institutions', 'short_percent_of_float', 'target_high_price', 'target_low_price', 'target_mean_price', 'recommendation_key', 'return_on_assets', 'return_on_equity', 'gross_margins', 'operating_margins', 'profit_margins', 'revenue_growth', 'earnings_growth', 'total_cash', 'total_debt', 'current_ratio', 'free_cashflow']
+Company: Apple Inc., Market Cap: 3979469914112
+
+Testing /api/equity/quote?symbol=AAPL...
+Status: 200
+Price: 271.06, Change: -2.37 (-0.87%)
+
+Testing /api/equity/history?symbol=AAPL...
+Status: 200
+Data type: <class 'list'>, length: 124
+First item: {'timestamp': 1761537600, 'open': 264.38, 'high': 268.61, 'low': 264.15, 'close': 268.3, 'volume': 44888200}
+Last item: {'timestamp': 1777003200, 'open': 272.76, 'high': 273.06, 'low': 269.65, 'close': 271.06, 'volume': 38124500}
+
+Testing /api/equity/financials?symbol=AAPL...
+Status: 200
+Data keys: ['symbol', 'income_statement', 'balance_sheet', 'cash_flow']
+Income Statement Dates: ['2025-09-30', '2024-09-30', '2023-09-30', '2022-09-30', '2021-09-30']
