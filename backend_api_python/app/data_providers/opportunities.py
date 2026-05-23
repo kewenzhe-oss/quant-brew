@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time as _time
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from app.utils.logger import get_logger
@@ -172,6 +173,14 @@ def analyze_opportunities_crypto(opportunities: list):
                 "change_24h": change, "change_7d": change_7d,
                 "signal": signal, "strength": strength, "reason": reason,
                 "impact": impact, "market": "Crypto", "timestamp": int(_time.time()),
+                "provenance": {
+                    "generated_by": "rule_based_scanner",
+                    "source": "market_data_provider",
+                    "method": "price_movement_and_technical_rules",
+                    "as_of": datetime.now(timezone.utc).isoformat(),
+                    "is_ai_generated": False,
+                    "is_investment_advice": False
+                }
             })
 
 
@@ -212,6 +221,14 @@ def analyze_opportunities_stocks(opportunities: list):
                 "change_24h": change, "signal": signal, "strength": strength,
                 "reason": reason, "impact": impact, "market": "USStock",
                 "timestamp": int(_time.time()),
+                "provenance": {
+                    "generated_by": "rule_based_scanner",
+                    "source": "market_data_provider",
+                    "method": "price_movement_and_technical_rules",
+                    "as_of": datetime.now(timezone.utc).isoformat(),
+                    "is_ai_generated": False,
+                    "is_investment_advice": False
+                }
             })
 
 
@@ -273,6 +290,14 @@ def analyze_opportunities_local_stocks(opportunities: list, market: str):
                 "change_24h": change, "signal": signal, "strength": strength,
                 "reason": reason, "impact": impact, "market": m,
                 "timestamp": int(_time.time()),
+                "provenance": {
+                    "generated_by": "rule_based_scanner",
+                    "source": "market_data_provider",
+                    "method": "price_movement_and_technical_rules",
+                    "as_of": datetime.now(timezone.utc).isoformat(),
+                    "is_ai_generated": False,
+                    "is_investment_advice": False
+                }
             })
 
 
@@ -315,6 +340,14 @@ def analyze_opportunities_forex(opportunities: list):
                 "change_24h": change, "signal": signal, "strength": strength,
                 "reason": reason, "impact": impact, "market": "Forex",
                 "timestamp": int(_time.time()),
+                "provenance": {
+                    "generated_by": "rule_based_scanner",
+                    "source": "market_data_provider",
+                    "method": "price_movement_and_technical_rules",
+                    "as_of": datetime.now(timezone.utc).isoformat(),
+                    "is_ai_generated": False,
+                    "is_investment_advice": False
+                }
             })
 
 
@@ -341,7 +374,7 @@ def analyze_opportunities_polymarket(opportunities: list):
                         "change_24h": 0,
                         "signal": "prediction_opportunity",
                         "strength": "strong" if analysis.get("opportunity_score", 0) > 85 else "medium",
-                        "reason": f"AI预测概率{analysis.get('ai_predicted_probability', 0):.1f}%，市场概率{market['current_probability']:.1f}%，差异{analysis.get('divergence', 0):.1f}%",
+                        "reason": f"模型预测概率{analysis.get('ai_predicted_probability', 0):.1f}%，市场概率{market['current_probability']:.1f}%，差异{analysis.get('divergence', 0):.1f}%",
                         "impact": "bullish" if analysis.get("recommendation") == "YES" else "bearish",
                         "market": "PredictionMarket",
                         "market_id": market["market_id"],
@@ -352,6 +385,14 @@ def analyze_opportunities_polymarket(opportunities: list):
                             "opportunity_score": analysis.get("opportunity_score", 0),
                         },
                         "timestamp": int(_time.time()),
+                        "provenance": {
+                            "generated_by": "rule_based_scanner",
+                            "source": "market_data_provider",
+                            "method": "price_movement_and_technical_rules",
+                            "as_of": datetime.now(timezone.utc).isoformat(),
+                            "is_ai_generated": False,
+                            "is_investment_advice": False
+                        }
                     })
             except Exception as e:
                 logger.debug("Failed to analyze polymarket %s: %s", market.get("market_id"), e)

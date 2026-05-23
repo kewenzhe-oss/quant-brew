@@ -26,6 +26,7 @@ from app.utils.db import get_db_connection
 from app.utils.logger import get_logger
 from app.utils.auth import login_required
 from app.utils.credential_crypto import decrypt_credential_blob
+from app.security.execution_guard import require_execution_enabled
 
 logger = get_logger(__name__)
 
@@ -366,6 +367,10 @@ def place_order():
       sl_price       (float)  — stop-loss price (optional, for record only)
       source         (str)    — "ai_radar" / "ai_analysis" / "indicator" / "manual"
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         user_id = g.user_id
         body = request.get_json(force=True, silent=True) or {}
@@ -653,6 +658,10 @@ def get_balance():
 
     Query: credential_id (int), market_type (str, default "swap")
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         user_id = g.user_id
         credential_id = request.args.get("credential_id", type=int)
@@ -1050,6 +1059,10 @@ def get_position():
 
     Query: credential_id (int), symbol (str), market_type (str)
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         user_id = g.user_id
         credential_id = request.args.get("credential_id", type=int)
@@ -1268,6 +1281,10 @@ def close_position():
       position_side  (str)    — optional "long" / "short"; required when both directions exist for the same symbol
       source          (str)    — "ai_radar" / "ai_analysis" / "indicator" / "manual"
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         user_id = g.user_id
         body = request.get_json(force=True, silent=True) or {}
@@ -1498,6 +1515,10 @@ def get_history():
 
     Query: limit (int, default 50), offset (int, default 0)
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         user_id = g.user_id
         limit = min(int(request.args.get("limit") or 50), 200)

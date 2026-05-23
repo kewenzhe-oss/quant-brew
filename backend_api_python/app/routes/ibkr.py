@@ -5,6 +5,7 @@ Standalone API endpoints for US stock trading.
 """
 
 from flask import Blueprint, request, jsonify
+from app.security.execution_guard import require_execution_enabled
 
 from app.utils.logger import get_logger
 from app.services.ibkr_trading import IBKRClient, IBKRConfig
@@ -35,6 +36,10 @@ def get_status():
     
     GET /api/ibkr/status
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         return jsonify({
@@ -63,6 +68,10 @@ def connect():
         "readonly": false         // Optional, readonly mode
     }
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     global _client
     
     try:
@@ -117,6 +126,10 @@ def disconnect():
     
     POST /api/ibkr/disconnect
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     global _client
     
     try:
@@ -147,6 +160,10 @@ def get_account():
     
     GET /api/ibkr/account
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -174,6 +191,10 @@ def get_positions():
     
     GET /api/ibkr/positions
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -202,6 +223,10 @@ def get_orders():
     
     GET /api/ibkr/orders
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -240,6 +265,10 @@ def place_order():
         "price": 150.00           // Required for limit orders
     }
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -319,6 +348,10 @@ def cancel_order(order_id: int):
     
     DELETE /api/ibkr/order/<order_id>
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -357,6 +390,10 @@ def get_quote():
     
     GET /api/ibkr/quote?symbol=AAPL&marketType=USStock
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:

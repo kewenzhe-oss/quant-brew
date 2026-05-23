@@ -21,7 +21,8 @@ tests = [
         "duration": "12 months",
         "frequency": "Monthly",
         "risk_profile": "Balanced",
-        "thesis": "Long-term allocation to a mature technology company with strong ecosystem and cash flow."
+        "thesis": "Long-term allocation to a mature technology company with strong ecosystem and cash flow.",
+        "locale": "en-US"
     },
     {
         "symbol": "QQQ",
@@ -31,7 +32,8 @@ tests = [
         "duration": "12 months",
         "frequency": "Monthly",
         "risk_profile": "Conservative",
-        "thesis": "Tech sector exposure."
+        "thesis": "Tech sector exposure.",
+        "locale": "zh-CN"
     },
     {
         "symbol": "BTC",
@@ -41,7 +43,19 @@ tests = [
         "duration": "12 months",
         "frequency": "Weekly",
         "risk_profile": "Aggressive",
-        "thesis": "Digital gold."
+        "thesis": "Digital gold.",
+        "locale": "en-US"
+    },
+    {
+        "symbol": "MSFT",
+        "asset_type": "Stock",
+        "plan_type": "Long-term DCA",
+        "total_budget": 80000,
+        "duration": "12 months",
+        "frequency": "Monthly",
+        "risk_profile": "Balanced",
+        "thesis": "长期看好微软在AI领域的领先地位，计划定投持有。",
+        "locale": "en-US"
     }
 ]
 

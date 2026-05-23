@@ -7,6 +7,7 @@ Provides REST API for MT5 trading operations.
 from flask import Blueprint, request, jsonify
 
 from app.utils.logger import get_logger
+from app.security.execution_guard import require_execution_enabled
 
 logger = get_logger(__name__)
 
@@ -48,6 +49,10 @@ def _get_client():
 @mt5_bp.route("/status", methods=["GET"])
 def get_status():
     """Get MT5 connection status."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         _ensure_mt5_imports()
         client = _get_client()
@@ -77,6 +82,10 @@ def connect():
         "terminal_path": ""     // Optional: path to terminal64.exe
     }
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     global _client
     
     try:
@@ -140,6 +149,10 @@ def connect():
 @mt5_bp.route("/disconnect", methods=["POST"])
 def disconnect():
     """Disconnect from MT5 terminal."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     global _client
     
     try:
@@ -157,6 +170,10 @@ def disconnect():
 @mt5_bp.route("/account", methods=["GET"])
 def get_account():
     """Get account information."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -172,6 +189,10 @@ def get_account():
 @mt5_bp.route("/positions", methods=["GET"])
 def get_positions():
     """Get open positions."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -188,6 +209,10 @@ def get_positions():
 @mt5_bp.route("/orders", methods=["GET"])
 def get_orders():
     """Get pending orders."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -204,6 +229,10 @@ def get_orders():
 @mt5_bp.route("/symbols", methods=["GET"])
 def get_symbols():
     """Get available symbols."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -233,6 +262,10 @@ def place_order():
         "price": 1.0800         // Required for limit orders
     }
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -306,6 +339,10 @@ def close_position():
         "volume": 0.1           // Optional: partial close volume
     }
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -350,6 +387,10 @@ def close_position():
 @mt5_bp.route("/order/<int:ticket>", methods=["DELETE"])
 def cancel_order(ticket: int):
     """Cancel a pending order."""
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:
@@ -375,6 +416,10 @@ def get_quote():
     Query params:
     - symbol: Trading symbol (e.g., EURUSD)
     """
+    guard = require_execution_enabled()
+    if guard:
+        return guard
+
     try:
         client = _get_client()
         if not client.connected:

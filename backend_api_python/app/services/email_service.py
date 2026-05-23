@@ -296,52 +296,51 @@ class EmailService:
         
         # Prepare email content based on type
         if code_type == 'register':
-            subject = 'QuantDinger - Verification Code for Registration'
-            action_text = 'complete your registration'
+            subject = 'Your registration code for QuantBrew'
+            action_text = 'register your account'
         elif code_type == 'login':
-            subject = 'QuantDinger - Quick Login Verification Code'
-            action_text = 'log in to your account'
+            subject = 'Your verification code for QuantBrew'
+            action_text = 'sign in to your account'
         elif code_type == 'reset_password':
-            subject = 'QuantDinger - Password Reset Verification Code'
+            subject = 'Your password reset code for QuantBrew'
             action_text = 'reset your password'
         elif code_type == 'change_password':
-            subject = 'QuantDinger - Verification Code for Password Change'
+            subject = 'Your password change code for QuantBrew'
             action_text = 'change your password'
         elif code_type == 'change_email':
-            subject = 'QuantDinger - Verification Code for Email Change'
+            subject = 'Your email change code for QuantBrew'
             action_text = 'change your email address'
         else:
-            subject = 'QuantDinger - Verification Code'
+            subject = 'Your verification code for QuantBrew'
             action_text = 'complete the verification'
         
         html_body = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #1890ff; margin: 0;">QuantDinger</h1>
-                <p style="color: #666; margin-top: 5px;">AI-Driven Quantitative Insights</p>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; color: #111827;">
+            <div style="margin-bottom: 32px;">
+                <h1 style="font-size: 24px; font-weight: 600; margin: 0; color: #111827;">QuantBrew</h1>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 4px; margin-bottom: 0;">Secure account access</p>
             </div>
             
-            <div style="background: #f5f5f5; border-radius: 8px; padding: 30px; text-align: center;">
-                <p style="color: #333; font-size: 16px; margin: 0 0 20px 0;">
-                    Your verification code to {action_text} is:
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 32px; text-align: center;">
+                <p style="font-size: 16px; margin: 0 0 24px 0; color: #374151;">
+                    Use the verification code below to {action_text}.
                 </p>
-                <div style="background: #fff; border: 2px solid #1890ff; border-radius: 8px; padding: 20px; display: inline-block;">
-                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1890ff;">{code}</span>
+                <div style="background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 16px 24px; display: inline-block;">
+                    <span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #111827;">{code}</span>
                 </div>
-                <p style="color: #999; font-size: 14px; margin-top: 20px;">
+                <p style="color: #6b7280; font-size: 14px; margin-top: 24px; margin-bottom: 0;">
                     This code will expire in {self.code_expire_minutes} minutes.
                 </p>
             </div>
             
-            <div style="margin-top: 30px; padding: 20px; background: #fff8e6; border-radius: 8px;">
-                <p style="color: #d48806; font-size: 14px; margin: 0;">
-                    <strong>Security Notice:</strong> If you did not request this code, 
-                    please ignore this email. Do not share this code with anyone.
+            <div style="margin-top: 32px;">
+                <p style="color: #4b5563; font-size: 14px; margin: 0; line-height: 1.6;">
+                    <strong>Security notice:</strong> If you did not request this code, you can safely ignore this email. Never share this code with anyone.
                 </p>
             </div>
             
-            <div style="text-align: center; margin-top: 30px; color: #999; font-size: 12px;">
-                <p>&copy; QuantDinger. All rights reserved.</p>
+            <div style="margin-top: 48px; border-top: 1px solid #e5e7eb; padding-top: 24px; color: #9ca3af; font-size: 12px; line-height: 1.5;">
+                <p style="margin: 0;">This email was sent by QuantBrew regarding your account security.</p>
             </div>
         </div>
         """

@@ -8,10 +8,8 @@
 # Legacy / private frontend source (not part of this open-source tree)
 /quantdinger_vue/
 /QuantDinger-Vue-src/
-# Build artefacts are committed for Docker-only deployments
-!/frontend/
-!/frontend/dist/
-!/frontend/dist/**
+# Build artefacts
+/frontend/dist/
 
 # ========================
 # Environment & Secrets
@@ -40,8 +38,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-# Only ignore root-level dist/, not frontend/dist/
-/dist/
+dist/
 build/
 *.egg
 .eggs/
@@ -79,3 +76,14 @@ QuantDinger-Vue-src/src/locales/lang/*.bak
 # Docker
 # ========================
 docker-compose.override.yml
+
+# ========================
+# User Exclusions
+# ========================
+.next/
+.env.local
+.env.production
+*.db
+*.sqlite
+data/
+uploads/

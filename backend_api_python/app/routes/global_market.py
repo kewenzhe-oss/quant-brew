@@ -37,6 +37,7 @@ responses rather than showing an error.
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
@@ -350,7 +351,19 @@ def trading_opportunities():
         if not force:
             cached = get_cached("trading_opportunities")
             if cached:
-                return jsonify({"code": 1, "msg": "success", "data": cached})
+                # If cached is already wrapped, return it, otherwise wrap it on the fly
+                if isinstance(cached, dict) and "items" in cached:
+                    return jsonify({"code": 1, "msg": "success", "data": cached})
+                
+                meta = {
+                    "generated_by": "rule_based_scanner",
+                    "method": "price_movement_and_technical_rules",
+                    "as_of": datetime.now(timezone.utc).isoformat(),
+                    "is_ai_generated": False,
+                    "is_investment_advice": False
+                }
+                wrapped = {"items": cached, "meta": meta}
+                return jsonify({"code": 1, "msg": "success", "data": wrapped})
 
         opportunities: list = []
 
@@ -376,9 +389,17 @@ def trading_opportunities():
             by_market[o.get("market", "?")] = by_market.get(o.get("market", "?"), 0) + 1
         logger.info("Trading opportunities: total %d (%s)", len(opportunities), by_market)
 
-        set_cached("trading_opportunities", opportunities, 3600)
+        meta = {
+            "generated_by": "rule_based_scanner",
+            "method": "price_movement_and_technical_rules",
+            "as_of": datetime.now(timezone.utc).isoformat(),
+            "is_ai_generated": False,
+            "is_investment_advice": False
+        }
+        wrapped = {"items": opportunities, "meta": meta}
+        set_cached("trading_opportunities", wrapped, 3600)
 
-        return jsonify({"code": 1, "msg": "success", "data": opportunities})
+        return jsonify({"code": 1, "msg": "success", "data": wrapped})
 
     except Exception as e:
         logger.error("trading_opportunities failed: %s", e, exc_info=True)

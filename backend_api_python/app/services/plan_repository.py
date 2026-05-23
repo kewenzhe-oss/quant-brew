@@ -66,10 +66,25 @@ def ensure_table_exists():
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW(),
                     next_review_at TIMESTAMP,
-                    last_reviewed_at TIMESTAMP
+                    last_reviewed_at TIMESTAMP,
+                    archived_at TIMESTAMP,
+                    deleted_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    paused_at TIMESTAMP,
+                    activated_at TIMESTAMP,
+                    status_reason VARCHAR(255)
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_plans_user_id ON qd_plans(user_id)")
+            try:
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN archived_at TIMESTAMP")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN deleted_at TIMESTAMP")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN completed_at TIMESTAMP")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN paused_at TIMESTAMP")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN activated_at TIMESTAMP")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN status_reason VARCHAR(255)")
+            except Exception:
+                pass
         else:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS qd_plans (
@@ -89,10 +104,25 @@ def ensure_table_exists():
                     created_at TEXT,
                     updated_at TEXT,
                     next_review_at TEXT,
-                    last_reviewed_at TEXT
+                    last_reviewed_at TEXT,
+                    archived_at TEXT,
+                    deleted_at TEXT,
+                    completed_at TEXT,
+                    paused_at TEXT,
+                    activated_at TEXT,
+                    status_reason TEXT
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_plans_user_id ON qd_plans(user_id)")
+            try:
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN archived_at TEXT")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN deleted_at TEXT")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN completed_at TEXT")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN paused_at TEXT")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN activated_at TEXT")
+                cur.execute("ALTER TABLE qd_plans ADD COLUMN status_reason TEXT")
+            except Exception:
+                pass
         conn.commit()
     except Exception as e:
         logger.error(f"ensure_table_exists failed: {e}")
@@ -192,9 +222,10 @@ def get_plans(user_id: int) -> dict:
                 SELECT id, user_id, symbol, asset_type, plan_type, status,
                        total_budget, duration, frequency, risk_profile, thesis,
                        plan_json, source, created_at, updated_at,
-                       next_review_at, last_reviewed_at
+                       next_review_at, last_reviewed_at, archived_at, deleted_at,
+                       completed_at, paused_at, activated_at, status_reason
                 FROM qd_plans
-                WHERE user_id = %s
+                WHERE user_id = %s AND status != 'deleted'
                 ORDER BY created_at DESC
             """, (user_id,))
         else:
@@ -202,9 +233,10 @@ def get_plans(user_id: int) -> dict:
                 SELECT id, user_id, symbol, asset_type, plan_type, status,
                        total_budget, duration, frequency, risk_profile, thesis,
                        plan_json, source, created_at, updated_at,
-                       next_review_at, last_reviewed_at
+                       next_review_at, last_reviewed_at, archived_at, deleted_at,
+                       completed_at, paused_at, activated_at, status_reason
                 FROM qd_plans
-                WHERE user_id = ?
+                WHERE user_id = ? AND status != 'deleted'
                 ORDER BY created_at DESC
             """, (user_id,))
 
@@ -218,7 +250,11 @@ def get_plans(user_id: int) -> dict:
             except Exception:
                 d["plan"] = {}
             # Convert timestamps to string for JSON serialisability
-            for ts_field in ("created_at", "updated_at", "next_review_at", "last_reviewed_at"):
+            ts_fields = (
+                "created_at", "updated_at", "next_review_at", "last_reviewed_at",
+                "archived_at", "deleted_at", "completed_at", "paused_at", "activated_at"
+            )
+            for ts_field in ts_fields:
                 val = d.get(ts_field)
                 if val and not isinstance(val, str):
                     d[ts_field] = str(val)
@@ -227,6 +263,173 @@ def get_plans(user_id: int) -> dict:
         return {"success": True, "data": plans}
     except Exception as e:
         logger.error(f"get_plans failed: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def get_plan_by_id(user_id: int, plan_id: str) -> dict:
+    """Fetch a single plan by ID."""
+    ensure_table_exists()
+    conn, db_type = _get_db()
+    try:
+        cur = conn.cursor()
+        query = """
+            SELECT id, user_id, symbol, asset_type, plan_type, status,
+                   total_budget, duration, frequency, risk_profile, thesis,
+                   plan_json, source, created_at, updated_at,
+                   next_review_at, last_reviewed_at, archived_at, deleted_at,
+                   completed_at, paused_at, activated_at, status_reason
+            FROM qd_plans
+            WHERE id = {placeholder} AND user_id = {placeholder} AND status != 'deleted'
+        """.replace("{placeholder}", "%s" if db_type == "postgres" else "?")
+        
+        cur.execute(query, (plan_id, user_id))
+        row = cur.fetchone()
+        if not row:
+            return {"success": False, "error": "Plan not found"}
+        
+        d = dict(row)
+        try:
+            d["plan"] = json.loads(d.pop("plan_json", "{}") or "{}")
+        except Exception:
+            d["plan"] = {}
+        ts_fields = (
+            "created_at", "updated_at", "next_review_at", "last_reviewed_at",
+            "archived_at", "deleted_at", "completed_at", "paused_at", "activated_at"
+        )
+        for ts_field in ts_fields:
+            val = d.get(ts_field)
+            if val and not isinstance(val, str):
+                d[ts_field] = str(val)
+                
+        return {"success": True, "data": d}
+    except Exception as e:
+        logger.error(f"get_plan_by_id failed: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def update_plan_status(user_id: int, plan_id: str, new_status: str, reason: str = None) -> dict:
+    """Update status of a plan and corresponding timestamps."""
+    ensure_table_exists()
+    now = _now_iso()
+    
+    # Determine which timestamp field to update based on new status
+    ts_field = None
+    if new_status == 'deleted':
+        ts_field = 'deleted_at'
+    elif new_status == 'archived':
+        ts_field = 'archived_at'
+    elif new_status == 'completed':
+        ts_field = 'completed_at'
+    elif new_status == 'paused':
+        ts_field = 'paused_at'
+    elif new_status == 'active':
+        ts_field = 'activated_at'
+
+    conn, db_type = _get_db()
+    try:
+        cur = conn.cursor()
+        
+        # Build dynamic query
+        ts_update = f", {ts_field} = {('%s' if db_type == 'postgres' else '?')}" if ts_field else ""
+        reason_update = f", status_reason = {('%s' if db_type == 'postgres' else '?')}" if reason else ""
+        
+        query = f"""
+            UPDATE qd_plans 
+            SET status = {('%s' if db_type == 'postgres' else '?')}, 
+                updated_at = {('%s' if db_type == 'postgres' else '?')}
+                {ts_update}
+                {reason_update}
+            WHERE id = {('%s' if db_type == 'postgres' else '?')} AND user_id = {('%s' if db_type == 'postgres' else '?')}
+        """
+        
+        params = [new_status, now]
+        if ts_field:
+            params.append(now if db_type == "sqlite" else "NOW()")
+        if reason:
+            params.append(reason)
+        params.extend([plan_id, user_id])
+        
+        cur.execute(query, tuple(params))
+        conn.commit()
+        
+        if cur.rowcount == 0:
+            return {"success": False, "error": "Plan not found or unauthorized"}
+            
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"update_plan_status failed: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def update_plan_details(user_id: int, plan_id: str, payload: dict) -> dict:
+    """Update basic properties of a plan."""
+    ensure_table_exists()
+    now = _now_iso()
+    
+    conn, db_type = _get_db()
+    try:
+        cur = conn.cursor()
+        
+        # We only allow updating these specific fields
+        fields_to_update = []
+        params = []
+        
+        if 'total_budget' in payload:
+            fields_to_update.append(f"total_budget = {('%s' if db_type == 'postgres' else '?')}")
+            params.append(payload['total_budget'])
+            
+        if 'duration' in payload:
+            fields_to_update.append(f"duration = {('%s' if db_type == 'postgres' else '?')}")
+            params.append(payload['duration'])
+            
+        if 'frequency' in payload:
+            fields_to_update.append(f"frequency = {('%s' if db_type == 'postgres' else '?')}")
+            params.append(payload['frequency'])
+            
+        if 'thesis' in payload:
+            fields_to_update.append(f"thesis = {('%s' if db_type == 'postgres' else '?')}")
+            params.append(payload['thesis'])
+            
+        if not fields_to_update:
+            return {"success": False, "error": "No valid fields to update"}
+            
+        # Add updated_at
+        fields_to_update.append(f"updated_at = {('%s' if db_type == 'postgres' else '?')}")
+        params.append(now if db_type == 'sqlite' else 'NOW()')
+        
+        # Add WHERE params
+        params.extend([plan_id, user_id])
+        
+        query = f"""
+            UPDATE qd_plans 
+            SET {', '.join(fields_to_update)}
+            WHERE id = {('%s' if db_type == 'postgres' else '?')} AND user_id = {('%s' if db_type == 'postgres' else '?')} AND status != 'deleted'
+        """
+        
+        cur.execute(query, tuple(params))
+        conn.commit()
+        
+        if cur.rowcount == 0:
+            return {"success": False, "error": "Plan not found or unauthorized"}
+            
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"update_plan_details failed: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
     finally:
         try:
