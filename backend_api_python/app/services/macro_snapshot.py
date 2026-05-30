@@ -103,6 +103,9 @@ def generate_macro_snapshot() -> Dict[str, Any]:
     t_start = time.monotonic()
     logger.info("[MacroSnapshot] Generation started")
 
+    # Read last-known cached snapshot from Redis before beginning collection
+    old_snap = read_macro_snapshot()
+
     snapshot: Dict[str, Any] = {
         "status": "ready",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -196,7 +199,7 @@ def generate_macro_snapshot() -> Dict[str, Any]:
             "vix_term": fetch_put_call_ratio,
         }
         with _TPE(max_workers=7) as ex:
-            sub_futures = {ex.submit(fn): key for key, fn in tasks.items()}
+            sub_futures = {ex.submit(fn, old_snap=old_snap): key for key, fn in tasks.items()}
             for fut in _ac(sub_futures):
                 key = sub_futures[fut]
                 try:
@@ -211,7 +214,7 @@ def generate_macro_snapshot() -> Dict[str, Any]:
     def _collect_liquidity():
         try:
             from app.data_providers.liquidity import fetch_all_liquidity
-            data = fetch_all_liquidity()
+            data = fetch_all_liquidity(old_snap=old_snap)
             return "liquidity", data
         except Exception as exc:
             logger.warning("[MacroSnapshot] liquidity failed: %s", exc)
@@ -220,7 +223,7 @@ def generate_macro_snapshot() -> Dict[str, Any]:
     def _collect_economy():
         try:
             from app.data_providers.economy import fetch_all_economy
-            data = fetch_all_economy()
+            data = fetch_all_economy(old_snap=old_snap)
             return "economy", data
         except Exception as exc:
             logger.warning("[MacroSnapshot] economy failed: %s", exc)
@@ -229,7 +232,7 @@ def generate_macro_snapshot() -> Dict[str, Any]:
     def _collect_inflation_rates():
         try:
             from app.data_providers.inflation import fetch_all_inflation_rates
-            data = fetch_all_inflation_rates()
+            data = fetch_all_inflation_rates(old_snap=old_snap)
             return "inflation_rates", data
         except Exception as exc:
             logger.warning("[MacroSnapshot] inflation_rates failed: %s", exc)

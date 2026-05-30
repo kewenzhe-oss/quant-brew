@@ -152,9 +152,9 @@ def get_positions():
             cur = db.cursor()
             cur.execute(
                 """
-                SELECT id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags, group_name, created_at, updated_at
+                SELECT id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags, group_name, status, closed_at, archived_at, close_note, created_at, updated_at
                 FROM qd_manual_positions
-                WHERE user_id = ?
+                WHERE user_id = ? AND status = 'open'
                 ORDER BY id DESC
                 """,
                 (user_id,)
@@ -179,8 +179,12 @@ def get_positions():
                 'notes': row.get('notes') or '',
                 'tags': _safe_json_loads(row.get('tags'), []),
                 'group_name': row.get('group_name') or '',
-                'created_at': row.get('created_at'),
-                'updated_at': row.get('updated_at'),
+                'status': row.get('status') or 'open',
+                'closed_at': _serialize_monitor_ts(row.get('closed_at')),
+                'archived_at': _serialize_monitor_ts(row.get('archived_at')),
+                'close_note': row.get('close_note') or '',
+                'created_at': _serialize_monitor_ts(row.get('created_at')),
+                'updated_at': _serialize_monitor_ts(row.get('updated_at')),
                 # Will be filled later
                 'current_price': 0,
                 'price_change': 0,
@@ -244,6 +248,55 @@ def get_positions():
         return jsonify({'code': 0, 'msg': str(e), 'data': []}), 500
 
 
+@portfolio_bp.route('/positions/archive', methods=['GET'])
+@login_required
+def get_archived_positions():
+    """Get all closed/archived manual positions for the current user."""
+    try:
+        user_id = g.user_id
+        with get_db_connection() as db:
+            cur = db.cursor()
+            cur.execute(
+                """
+                SELECT id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags, group_name, status, closed_at, archived_at, close_note, created_at, updated_at
+                FROM qd_manual_positions
+                WHERE user_id = ? AND status IN ('closed', 'archived')
+                ORDER BY closed_at DESC, id DESC
+                """,
+                (user_id,)
+            )
+            rows = cur.fetchall() or []
+            cur.close()
+
+        positions = []
+        for row in rows:
+            positions.append({
+                'id': row.get('id'),
+                'market': row.get('market'),
+                'symbol': row.get('symbol'),
+                'name': row.get('name') or row.get('symbol'),
+                'side': row.get('side') or 'long',
+                'quantity': float(row.get('quantity') or 0),
+                'entry_price': float(row.get('entry_price') or 0),
+                'entry_time': row.get('entry_time'),
+                'notes': row.get('notes') or '',
+                'tags': _safe_json_loads(row.get('tags'), []),
+                'group_name': row.get('group_name') or '',
+                'status': row.get('status') or 'open',
+                'closed_at': _serialize_monitor_ts(row.get('closed_at')),
+                'archived_at': _serialize_monitor_ts(row.get('archived_at')),
+                'close_note': row.get('close_note') or '',
+                'created_at': _serialize_monitor_ts(row.get('created_at')),
+                'updated_at': _serialize_monitor_ts(row.get('updated_at'))
+            })
+
+        return jsonify({'code': 1, 'msg': 'success', 'data': positions})
+    except Exception as e:
+        logger.error(f"get_archived_positions failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': []}), 500
+
+
 @portfolio_bp.route('/positions', methods=['POST'])
 @login_required
 def add_position():
@@ -285,14 +338,14 @@ def add_position():
             # Delete any existing positions for this symbol (regardless of side),
             # ensuring only one position per symbol per user per group.
             cur.execute(
-                "DELETE FROM qd_manual_positions WHERE user_id = ? AND market = ? AND symbol = ? AND group_name = ?",
+                "DELETE FROM qd_manual_positions WHERE user_id = ? AND market = ? AND symbol = ? AND group_name = ? AND status = 'open'",
                 (user_id, market, symbol, group_name)
             )
             cur.execute(
                 """
                 INSERT INTO qd_manual_positions 
-                (user_id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags, group_name, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                (user_id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags, group_name, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', NOW(), NOW())
                 """,
                 (user_id, market, symbol, name, side, quantity, entry_price, entry_time, notes, tags_json, group_name)
             )
@@ -314,6 +367,7 @@ def update_position(position_id):
     try:
         user_id = g.user_id
         data = request.get_json() or {}
+        logger.info(f"update_position payload: {data}")
         
         updates = []
         params = []
@@ -352,6 +406,22 @@ def update_position(position_id):
         if 'group_name' in data:
             updates.append('group_name = ?')
             params.append((data.get('group_name') or '').strip())
+
+        if 'status' in data:
+            status = data.get('status')
+            updates.append('status = ?')
+            params.append(status)
+            if status == 'closed':
+                updates.append('closed_at = NOW()')
+            elif status == 'archived':
+                updates.append('archived_at = NOW()')
+            elif status == 'open':
+                updates.append('closed_at = NULL')
+                updates.append('archived_at = NULL')
+
+        if 'close_note' in data:
+            updates.append('close_note = ?')
+            params.append((data.get('close_note') or '').strip())
         
         if not updates:
             return jsonify({'code': 0, 'msg': 'No fields to update', 'data': None}), 400
@@ -413,7 +483,7 @@ def get_portfolio_summary():
                 """
                 SELECT id, market, symbol, side, quantity, entry_price
                 FROM qd_manual_positions
-                WHERE user_id = ?
+                WHERE user_id = ? AND status = 'open'
                 """,
                 (user_id,)
             )

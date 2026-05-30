@@ -173,7 +173,12 @@ def get_technicals(symbol: str, period: str = '1y', interval: str = '1d') -> Dic
         df.ta.macd(fast=12, slow=26, signal=9, append=True)
         df.ta.stoch(append=True) # %K, %D
         df.ta.adx(length=14, append=True)
-        df.ta.cci(length=20, append=True)
+        # Calculate CCI manually to avoid the pandas_ta parentheses bug
+        tp = (df['High'] + df['Low'] + df['Close']) / 3
+        sma_tp = tp.rolling(20).mean()
+        mad_tp = tp.rolling(20).apply(lambda x: (x - x.mean()).abs().mean())
+        df['CCI_20_0.015'] = (tp - sma_tp) / (0.015 * mad_tp)
+        
         df.ta.mfi(length=14, append=True)
         df.ta.bbands(length=20, std=2, append=True)
         df.ta.willr(length=14, append=True)
@@ -274,7 +279,11 @@ def get_equity_timeseries(symbol: str, metric_key: str, period: str = '1y', inte
             if metric_key == 'rsi': df.ta.rsi(length=14, append=True)
             elif metric_key == 'macd': df.ta.macd(fast=12, slow=26, signal=9, append=True)
             elif metric_key == 'stoch_k': df.ta.stoch(append=True)
-            elif metric_key == 'cci': df.ta.cci(length=20, append=True)
+            elif metric_key == 'cci':
+                tp = (df['High'] + df['Low'] + df['Close']) / 3
+                sma_tp = tp.rolling(20).mean()
+                mad_tp = tp.rolling(20).apply(lambda x: (x - x.mean()).abs().mean())
+                df['CCI_20_0.015'] = (tp - sma_tp) / (0.015 * mad_tp)
             elif metric_key == 'atr': df.ta.atr(length=14, append=True)
             elif metric_key == 'mfi': df.ta.mfi(length=14, append=True)
             elif metric_key == 'willr': df.ta.willr(length=14, append=True)

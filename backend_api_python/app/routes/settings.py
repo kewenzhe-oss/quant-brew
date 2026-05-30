@@ -426,6 +426,15 @@ CONFIG_SCHEMA = {
                 'link_text': 'settings.link.getApiKey',
                 'description': 'Twelve Data API key for CN/HK stock K-lines (free 800 credits/day)'
             },
+            {
+                'key': 'FRED_API_KEY',
+                'label': 'FRED API Key',
+                'type': 'password',
+                'required': False,
+                'link': 'https://fredaccount.stlouisfed.org/apikeys',
+                'link_text': 'settings.link.getApiKey',
+                'description': 'FRED (Federal Reserve Economic Data) API key for macroeconomic indicator collection. Free registration at the St. Louis Fed site.'
+            },
         ]
     },
 

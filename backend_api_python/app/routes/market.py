@@ -632,3 +632,81 @@ def get_stock_name():
             'msg': f'Failed: {str(e)}',
             'data': None
         }), 500
+
+
+@market_bp.route('/watchlist/decision', methods=['POST'])
+@login_required
+def call_ida_watchlist_decision():
+    """
+    AI-driven watchlist decision making for long-tail crypto assets/on-chain projects.
+    """
+    try:
+        data = request.get_json() or {}
+        user_input = data.get('user_input', '').strip()
+        asset_class = data.get('asset_class', '').strip()
+        existing_watchlist = data.get('existing_watchlist', [])
+        
+        if not user_input:
+            return jsonify({'code': 0, 'msg': 'Missing user_input', 'data': None}), 400
+
+        from app.services.llm import LLMService
+        llm = LLMService()
+
+        system_prompt = (
+            "You are an Asset Selection & Risk Assistant inside a trading dashboard.\n"
+            "Your goal is to decide whether and how a user-inputted asset should be added into the Watchlist.\n\n"
+            "Rules:\n"
+            "1. Normalize & resolve the asset:\n"
+            "   - Try to resolve the user's input to a concrete trading symbol.\n"
+            "   - Preferred format: BASE/QUOTE (e.g. OKB/USDT, JUP/USDT, WIF/USDT).\n"
+            "   - If you cannot find a reliable mapping, mark decision = 'unresolved' and explain why in the reason field.\n"
+            "2. Evaluate whether it belongs to the Watchlist:\n"
+            "   - Make an explicit decision: 'add', 'watch-only', or 'ignore'.\n"
+            "   - 'add': The asset has sufficient liquidity and trading history, OR is highly relevant.\n"
+            "   - 'watch-only': The asset is highly volatile or speculative, but has significant user interest.\n"
+            "   - 'ignore': The asset is a scam, rug-pull, honey-pot, or has zero liquidity/activity.\n\n"
+            "You must output a raw JSON object matching this schema exactly:\n"
+            "{\n"
+            "  \"decision\": \"add\" | \"watch-only\" | \"ignore\" | \"unresolved\",\n"
+            "  \"normalized_symbol\": \"resolved symbol (e.g. OKB/USDT) or null\",\n"
+            "  \"display_name\": \"friendly name of the asset (e.g. OKB) or null\",\n"
+            "  \"asset_type\": \"Cryptocurrency\" | \"US Stock\",\n"
+            "  \"risk_tags\": [\"list\", \"of\", \"tags\", \"e.g.\", \"volatile\", \"meme\", \"new-token\", \"etc\"],\n"
+            "  \"suggested_watchlist_folder\": \"suggested folder, usually 'crypto' or 'stocks'\",\n"
+            "  \"reason\": \"Detailed explanation of your decision (keep it concise, 1-2 sentences)\"\n"
+            "}\n"
+            "Do not include any markdown formatting, only valid JSON."
+        )
+
+        user_prompt = (
+            f"User input: {user_input}\n"
+            f"Asset class: {asset_class}\n"
+            f"Existing watchlist symbols: {existing_watchlist}"
+        )
+
+        default_structure = {
+            "decision": "unresolved",
+            "normalized_symbol": None,
+            "display_name": None,
+            "asset_type": "Cryptocurrency",
+            "risk_tags": [],
+            "suggested_watchlist_folder": "crypto",
+            "reason": "AI assistant fallback error or unable to resolve."
+        }
+
+        decision_data = llm.safe_call_llm(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            default_structure=default_structure
+        )
+
+        return jsonify({
+            'code': 1,
+            'msg': 'success',
+            'data': decision_data
+        })
+    except Exception as e:
+        logger.error(f"watchlist_decision failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+

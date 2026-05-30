@@ -116,14 +116,35 @@ class KlineService:
         try:
             ticker = DataSourceFactory.get_ticker(market, symbol)
             if ticker and ticker.get('last', 0) > 0:
+                val_change = ticker.get('change')
+                val_pct = ticker.get('changePercent') or ticker.get('percentage')
+                prev_close = ticker.get('previousClose')
+                
+                # If percentage is missing/None, try calculating it using previousClose
+                if val_pct is None and prev_close and float(prev_close) > 0:
+                    val_change = ticker.get('last') - float(prev_close)
+                    val_pct = (val_change / float(prev_close)) * 100
+                
+                # If still None, fall back to fetching daily close from 1D K-line
+                if val_pct is None:
+                    try:
+                        daily_klines = self.get_kline(market, symbol, '1D', 2)
+                        if daily_klines and len(daily_klines) > 1:
+                            prev_close = daily_klines[-2]['close']
+                            if prev_close and prev_close > 0:
+                                val_change = ticker.get('last') - prev_close
+                                val_pct = (val_change / prev_close) * 100
+                    except Exception as k_err:
+                        logger.debug(f"Failed to fetch daily close fallback for {symbol}: {k_err}")
+                
                 result = {
                     'price': ticker.get('last', 0),
-                    'change': ticker.get('change', 0),
-                    'changePercent': ticker.get('changePercent') or ticker.get('percentage', 0),
+                    'change': val_change if val_change is not None else 0,
+                    'changePercent': val_pct if val_pct is not None else 0,
                     'high': ticker.get('high', 0),
                     'low': ticker.get('low', 0),
                     'open': ticker.get('open', 0),
-                    'previousClose': ticker.get('previousClose', 0),
+                    'previousClose': prev_close if prev_close is not None else 0,
                     'source': 'ticker'
                 }
                 # 缓存 30 秒

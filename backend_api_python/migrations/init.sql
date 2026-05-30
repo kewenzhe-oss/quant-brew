@@ -558,12 +558,20 @@ CREATE TABLE IF NOT EXISTS qd_manual_positions (
     notes TEXT DEFAULT '',
     tags TEXT DEFAULT '',
     group_name VARCHAR(100) DEFAULT '',
+    status VARCHAR(20) DEFAULT 'open',
+    closed_at TIMESTAMP NULL,
+    archived_at TIMESTAMP NULL,
+    close_note TEXT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, market, symbol, side, group_name)
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_manual_positions_unique_open 
+ON qd_manual_positions(user_id, market, symbol, side, group_name) 
+WHERE status = 'open';
+
 CREATE INDEX IF NOT EXISTS idx_manual_positions_user_id ON qd_manual_positions(user_id);
+CREATE INDEX IF NOT EXISTS idx_manual_positions_status ON qd_manual_positions(status);
 
 -- =============================================================================
 -- 15. Position Alerts
