@@ -190,3 +190,73 @@ def test_adanos_sentiment_validates_source():
     assert normalize_source("twitter") == "x"
     with pytest.raises(ValueError):
         normalize_source("unsupported")
+
+
+def test_generate_heatmap_data_filtering(monkeypatch):
+    """Verify that generate_heatmap_data filters stablecoins, RWAs (FIGR_HELOC), and illiquid tokens."""
+    from app.data_providers.heatmap import generate_heatmap_data
+
+    # Controlled list of mock crypto market cap data
+    mock_crypto_data = [
+        # Mainstream, high-signal, highly liquid (should PASS)
+        {"symbol": "btc", "name": "Bitcoin", "price": 65000.0, "change_24h": 2.5, "market_cap": 1200000000.0, "volume_24h": 30000000.0},
+        {"symbol": "eth", "name": "Ethereum", "price": 3500.0, "change_24h": -1.2, "market_cap": 400000000.0, "volume_24h": 15000000.0},
+        {"symbol": "sol", "name": "Solana", "price": 150.0, "change_24h": 5.4, "market_cap": 60000000.0, "volume_24h": 5000000.0},
+        
+        # Blacklisted Stablecoins (should be EXCLUDED)
+        {"symbol": "usdt", "name": "Tether", "price": 1.0, "change_24h": 0.01, "market_cap": 110000000.0, "volume_24h": 50000000.0},
+        {"symbol": "usdc", "name": "USD Coin", "price": 1.0, "change_24h": 0.0, "market_cap": 30000000.0, "volume_24h": 8000000.0},
+        
+        # Blacklisted RWA / Credit pools (should be EXCLUDED)
+        {"symbol": "figr_heloc", "name": "Figure HELOC", "price": 100.0, "change_24h": 0.0, "market_cap": 350000000.0, "volume_24h": 50.0},
+        {"symbol": "buidl", "name": "BlackRock BUIDL", "price": 1.0, "change_24h": 0.0, "market_cap": 500000000.0, "volume_24h": 0.0},
+        
+        # Wrapped asset (should be EXCLUDED)
+        {"symbol": "wbtc", "name": "Wrapped Bitcoin", "price": 65000.0, "change_24h": 2.5, "market_cap": 10000000.0, "volume_24h": 1000000.0},
+        
+        # High-cap but low-volume illiquid asset (velocity ratio < 0.0005) (should be EXCLUDED)
+        {"symbol": "ghost", "name": "Illiquid Ghost Token", "price": 10.0, "change_24h": 0.0, "market_cap": 200000000.0, "volume_24h": 5000.0}, # ratio = 0.000025
+        
+        # Low-cap but highly liquid emerging asset (should PASS)
+        {"symbol": "emerge", "name": "Emerging Token", "price": 0.5, "change_24h": 12.5, "market_cap": 5000000.0, "volume_24h": 200000.0}, # ratio = 0.04
+    ]
+
+    # Mock get_cached responses
+    def mock_get_cached(key):
+        if key == "crypto_heatmap":
+            return mock_crypto_data
+        # Keep other endpoints returning empty lists/dicts to focus on crypto
+        if key in ("forex_pairs", "commodities", "stock_indices"):
+            return []
+        return None
+
+    monkeypatch.setattr("app.data_providers.heatmap.get_cached", mock_get_cached)
+
+    # Run the generator
+    result = generate_heatmap_data()
+    crypto_list = result.get("crypto", [])
+
+    # Extract symbols that passed the logic
+    passed_symbols = [coin["name"] for coin in crypto_list]
+
+    # Verify mainstream and emerging high-signal assets passed
+    assert "BTC" in passed_symbols
+    assert "ETH" in passed_symbols
+    assert "SOL" in passed_symbols
+    assert "EMERGE" in passed_symbols
+
+    # Verify blacklisted or low-velocity assets were excluded
+    assert "USDT" not in passed_symbols
+    assert "USDC" not in passed_symbols
+    assert "FIGR_HELOC" not in passed_symbols
+    assert "BUIDL" not in passed_symbols
+    assert "WBTC" not in passed_symbols
+    assert "GHOST" not in passed_symbols
+
+    # Check structure compatibility with the frontend contract
+    for coin in crypto_list:
+        assert "name" in coin
+        assert "fullName" in coin
+        assert "value" in coin
+        assert "price" in coin
+        assert coin["name"] == coin["name"].upper()

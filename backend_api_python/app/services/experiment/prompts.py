@@ -64,17 +64,80 @@ Return a JSON array:
 ]"""
 
 
+def infer_indicator_params(code: str) -> List[Dict[str, Any]]:
+    """Scan indicator code to heuristically detect tunable periods or windows."""
+    params = []
+    seen_names = set()
+    
+    # 1. Look for typical parameter variable assignments
+    # e.g., fast_period = 9, slow_period = 21, rolling_window = 14
+    assign_pattern = r'\b(\w*period\w*|\w*window\w*|\w*length\w*|\w*span\w*)\s*=\s*(\d+)\b'
+    for match in re.finditer(assign_pattern, code or '', re.IGNORECASE):
+        name = match.group(1)
+        val_str = match.group(2)
+        if name.lower() not in seen_names:
+            seen_names.add(name.lower())
+            try:
+                val = int(val_str)
+                params.append({
+                    "name": name,
+                    "type": "int",
+                    "default": val,
+                    "description": f"Inferred period variable: {name}",
+                    "inferred": True
+                })
+            except ValueError:
+                continue
+
+    # 2. Look for literal numbers inside common rolling/ewm function calls
+    patterns = [
+        (r'span\s*=\s*(\d+)', 'int', 'EWM span'),
+        (r'window\s*=\s*(\d+)', 'int', 'rolling window'),
+        (r'rolling\(\s*(\d+)\s*\)', 'int', 'rolling window'),
+        (r'period\s*=\s*(\d+)', 'int', 'indicator period'),
+        (r'length\s*=\s*(\d+)', 'int', 'indicator length'),
+    ]
+
+    seen_defaults = set(p['default'] for p in params)
+    for pattern, p_type, desc in patterns:
+        for match in re.finditer(pattern, code or '', re.IGNORECASE):
+            val_str = match.group(1)
+            try:
+                val = int(val_str) if p_type == 'int' else float(val_str)
+            except ValueError:
+                continue
+            
+            if val in seen_defaults:
+                continue
+
+            seen_defaults.add(val)
+            name = f"inferred_param_{len(params) + 1}"
+            params.append({
+                "name": name,
+                "type": p_type,
+                "default": val,
+                "description": f"Inferred {desc}",
+                "inferred": True
+            })
+            
+    return params
+
+
 def extract_indicator_params(code: str) -> List[Dict[str, Any]]:
-    """Parse @param declarations from indicator code."""
-    return IndicatorParamsParser.parse_params(code or '')
+    """Parse @param declarations from indicator code, falling back to inference if none."""
+    params = IndicatorParamsParser.parse_params(code or '')
+    if not params:
+        params = infer_indicator_params(code or '')
+    return params
 
 
 def _format_indicator_params(params: List[Dict[str, Any]]) -> str:
     if not params:
-        return "(No @param annotations found — indicator has no tunable params)"
+        return "(No tunable params found — indicator has no tunable params)"
     lines = []
     for p in params:
-        line = f"- {p['name']} ({p['type']}): default={p['default']}"
+        tag = " [Inferred]" if p.get('inferred') else ""
+        line = f"- {p['name']} ({p['type']}): default={p['default']}{tag}"
         if p.get('description'):
             line += f"  — {p['description']}"
         lines.append(line)
@@ -150,7 +213,7 @@ def build_round_prompt(
 
 
 def parse_llm_candidates(raw_text: str) -> List[Dict[str, Any]]:
-    """Parse LLM response into a list of candidate parameter dicts."""
+    """Parse LLM response into a list of candidate parameter dicts with robust auto-recovery."""
     text = raw_text.strip()
     if text.startswith("```"):
         first_nl = text.find("\n")
@@ -171,6 +234,24 @@ def parse_llm_candidates(raw_text: str) -> List[Dict[str, Any]]:
             return [_normalize_candidate(parsed)]
     except json.JSONDecodeError:
         pass
+
+    # Suffix recovery array list if JSON was truncated by provider
+    recovery_suffixes = [
+        ']', '}', '}]', '}]}', '"}', '"}]', '"}]}', 
+        '"riskParams": {}}]',
+        '"riskParams": {"stopLossPct": 0.02}}]',
+        '"riskParams": {"stopLossPct": 0.02, "takeProfitPct": 0.05}}]}',
+        '"riskParams": {"stopLossPct": 0.02, "takeProfitPct": 0.05, "entryPct": 0.5, "leverage": 1, "trailingStop": {"enabled": false, "pct": 0.02, "activationPct": 0.01}}}]'
+    ]
+    for suffix in recovery_suffixes:
+        try:
+            parsed = json.loads(text + suffix)
+            if isinstance(parsed, list):
+                return [_normalize_candidate(c) for c in parsed if isinstance(c, dict)]
+            if isinstance(parsed, dict) and 'candidates' in parsed:
+                return [_normalize_candidate(c) for c in parsed['candidates'] if isinstance(c, dict)]
+        except json.JSONDecodeError:
+            continue
 
     # Fallback: extract JSON array substring
     match = re.search(r'\[.*\]', text, re.DOTALL)

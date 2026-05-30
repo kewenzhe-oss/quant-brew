@@ -64,15 +64,45 @@ def generate_heatmap_data() -> Dict[str, Any]:
             "unit": comm.get("unit", ""),
         })
 
-    # Crypto — sort by market cap, top 25
+    # Crypto — filter, then sort by market cap and take top 25
+    # Define a robust product-level blacklist filter for the default observation heatmap:
+    # 1. Stablecoins/Fiat pegs: Excluded because they show ~0.00% daily volatility and dilute market momentum signals.
+    # 2. Wrapped/Pegged derivatives: Excluded to prevent duplicate representation of the same underlying asset.
+    # 3. Institutional credit / private debt pools: Excluded as they represent RWA loans with no retail trading liquidity.
+    CRYPTO_BLACKLIST = {
+        "USDT", "USDC", "USDS", "DAI", "FDUSD", "USDE", "TUSD", "BUSD",  # Stablecoins
+        "WBTC", "WETH",  # Wrapped/pegged assets
+        "FIGR_HELOC", "BUIDL", "FOBXX"  # Institutional RWA/Credit pools
+    }
+
+    crypto_filtered = []
+    for coin in (crypto_data or []):
+        symbol = (coin.get("symbol") or "").upper()
+        if not symbol or symbol in CRYPTO_BLACKLIST:
+            continue
+
+        # Add a liquidity velocity heuristic:
+        # Exclude large-market-cap assets that have near-zero actual daily trading volume on public markets.
+        # This keeps the board highly responsive and focused on tradeable, high-signal assets.
+        mcap = safe_float(coin.get("market_cap", 0))
+        vol = safe_float(coin.get("volume_24h", 0))
+        
+        # Velocity ratio threshold: 0.05% (0.0005) daily volume relative to market cap
+        if mcap > 0 and (vol / mcap) < 0.0005:
+            continue
+
+        crypto_filtered.append(coin)
+
+    # Sort filtered list by market cap in descending order
     crypto_sorted = sorted(
-        (crypto_data or []),
+        crypto_filtered,
         key=lambda x: safe_float(x.get("market_cap", 0)),
         reverse=True,
     )
-    for coin in [c for c in crypto_sorted if c.get("symbol")][:25]:
+
+    for coin in crypto_sorted[:25]:
         heatmap["crypto"].append({
-            "name": coin.get("symbol", ""),
+            "name": coin.get("symbol", "").upper(),
             "fullName": coin.get("name", ""),
             "value": coin.get("change_24h", 0),
             "marketCap": coin.get("market_cap", 0),

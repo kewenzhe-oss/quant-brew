@@ -1517,6 +1517,28 @@ def ai_generate_strategy():
         if not prompt.strip():
             return jsonify({'code': '', 'msg': _strategy_ai_text('prompt_empty', lang), 'params': None})
 
+        # Build output-language directive so AI text (comments, reasons, descriptions)
+        # is always generated in the user's UI language.
+        _output_lang_map = {
+            "zh-CN": "Simplified Chinese",
+            "zh-TW": "Traditional Chinese",
+            "en-US": "English",
+            "ko-KR": "Korean",
+            "ja-JP": "Japanese",
+            "th-TH": "Thai",
+            "vi-VN": "Vietnamese",
+            "ar-SA": "Arabic",
+            "de-DE": "German",
+            "fr-FR": "French",
+        }
+        output_lang = _output_lang_map.get(lang, "English")
+        _lang_directive = (
+            f"LANGUAGE INSTRUCTION: The user's UI language is {output_lang}. "
+            f"Write all human-readable text (comments, reason fields, descriptions, "
+            f"any string that the user will read) in {output_lang}. "
+            "Python code identifiers (function names, variable names) must remain in English.\n\n"
+        )
+
         intent = (payload.get('intent') or 'generate_code').strip()
         from app.services.llm import LLMService
         llm = LLMService()
@@ -1611,7 +1633,8 @@ def ai_generate_strategy():
                 logger.warning(f"[AI Bot] Failed to fetch market data: {mkt_err}")
 
             system_prompt = (
-                "You are an expert quantitative trading advisor. The user wants to create an automated trading bot.\n"
+                _lang_directive
+                + "You are an expert quantitative trading advisor. The user wants to create an automated trading bot.\n"
                 "Based on their description AND the real-time market data provided, recommend one of the four bot types and provide optimal parameters.\n\n"
                 "Available bot types and their parameter schemas:\n"
                 "1. grid - Grid Trading: {upperPrice: number, lowerPrice: number, gridCount: int(5-100), amountPerGrid: number, gridMode: 'arithmetic'|'geometric'}\n"
@@ -1690,7 +1713,7 @@ def ai_generate_strategy():
             template_key = payload.get('template_key') or ''
             current_params = payload.get('params') or {}
             code_snapshot = (payload.get('code') or '')[:8000]
-            system_prompt = """You tune quantitative strategy template parameters from the user's request.
+            system_prompt = _lang_directive + """You tune quantitative strategy template parameters from the user's request.
 Return ONLY a single JSON object: keys are parameter names (strings), values are JSON numbers or booleans.
 You may return a partial object (only keys that should change) or a full object.
 Do not use markdown fences, do not add explanations before or after the JSON."""
@@ -1732,7 +1755,7 @@ Do not use markdown fences, do not add explanations before or after the JSON."""
                 return jsonify({'code': '', 'params': None, 'msg': _strategy_ai_text('invalid_json_params', lang)})
             return jsonify({'code': '', 'params': updates, 'msg': _strategy_ai_text('success', lang)})
 
-        system_prompt = """You are a quantitative trading strategy code generator.
+        system_prompt = _lang_directive + """You are a quantitative trading strategy code generator.
 Generate Python strategy code that follows this framework:
 - def on_init(ctx): Initialize strategy parameters using ctx.param(name, default)
 - def on_bar(ctx, bar): Core logic called on each K-line bar
@@ -1818,7 +1841,8 @@ Quality rules:
 
         def _repair_strategy_code_via_llm(bad_code: str, validation: dict) -> str:
             repair_prompt = (
-                "You produced QuantDinger strategy script code that failed automatic validation. "
+                _lang_directive
+                + "You produced QuantDinger strategy script code that failed automatic validation. "
                 "Fix the code while preserving the user's trading idea. Return one full replacement script only.\n\n"
                 f"# Original user request\n{prompt.strip()}\n\n"
                 f"# Validation issues to fix\n{_format_strategy_validation_issues(validation)}\n\n"

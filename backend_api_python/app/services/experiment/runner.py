@@ -83,6 +83,10 @@ class ExperimentRunnerService:
         snapshot, start_date, end_date = self._build_snapshot(base=base, user_id=user_id)
         indicator_code = snapshot.get('code') or ''
         indicator_params = extract_indicator_params(indicator_code)
+        
+        # Check if the strategy declares parameters or only has heuristically inferred ones
+        has_declared_params = any(not p.get('inferred') for p in indicator_params) if indicator_params else False
+        fallback_applied_global = False
 
         # --- Step 1: detect market regime ---
         self._emit(on_progress, 'regime', {'status': 'running'})
@@ -108,6 +112,7 @@ class ExperimentRunnerService:
                 'round': round_num,
                 'maxRounds': max_rounds,
                 'status': 'running',
+                'hasIndicatorParams': has_declared_params,
             })
 
             # 2a. Build prompt
@@ -135,15 +140,14 @@ class ExperimentRunnerService:
                 logger.error("LLM call failed in round %d: %s", round_num, exc)
                 candidates_raw = []
 
-            if not candidates_raw:
-                logger.warning("Round %d produced no candidates, skipping", round_num)
-                all_rounds.append({
-                    'round': round_num,
-                    'candidates': [],
-                    'bestScore': global_best_score,
-                    'error': 'LLM returned no valid candidates',
-                })
-                continue
+            # If LLM returns truncated/invalid JSON, or too few candidates, apply deterministic fallback
+            round_fallback = False
+            if not candidates_raw or len(candidates_raw) < 2:
+                logger.warning("Round %d: LLM returned insufficient candidates (%d). Generating deterministic fallbacks.", 
+                               round_num, len(candidates_raw))
+                candidates_raw = self._generate_deterministic_fallbacks(round_num, n_per_round)
+                round_fallback = True
+                fallback_applied_global = True
 
             # 2c. Backtest each candidate
             round_ranked: List[Dict[str, Any]] = []
@@ -194,6 +198,7 @@ class ExperimentRunnerService:
                 'candidates': round_ranked,
                 'bestScore': round_best_score,
                 'globalBestScore': global_best_score,
+                'fallbackApplied': round_fallback,
                 'elapsed': round(time.time() - round_start, 1),
             }
             all_rounds.append(round_info)
@@ -217,12 +222,15 @@ class ExperimentRunnerService:
             'regime': regime,
             'generatorHints': self._build_generator_hints(regime) if regime else {},
             'indicatorParams': indicator_params,
+            'hasIndicatorParams': has_declared_params,
+            'fallbackApplied': fallback_applied_global,
             'rounds': [{
                 'round': r['round'],
                 'bestScore': r.get('bestScore', 0),
                 'globalBestScore': r.get('globalBestScore', 0),
                 'candidateCount': len(r.get('candidates') or []),
                 'elapsed': r.get('elapsed', 0),
+                'fallbackApplied': r.get('fallbackApplied', False),
                 'error': r.get('error'),
             } for r in all_rounds],
             'rankedStrategies': all_candidates[:20],
@@ -231,6 +239,8 @@ class ExperimentRunnerService:
                 'totalRounds': len(all_rounds),
                 'totalCandidates': len(all_candidates),
                 'globalBestScore': global_best_score,
+                'hasIndicatorParams': has_declared_params,
+                'fallbackApplied': fallback_applied_global,
             },
         }
         # Final payload is sent once via SSE route (__final__); avoid duplicating huge JSON on progress.
@@ -606,3 +616,73 @@ class ExperimentRunnerService:
                 'totalTrades': (best.get('result') or {}).get('totalTrades'),
             },
         }
+
+    @staticmethod
+    def _generate_deterministic_fallbacks(round_num: int, n_candidates: int) -> List[Dict[str, Any]]:
+        """Generate diverse risk parameter profiles that vary by round to ensure unique results."""
+        if round_num == 1:
+            profiles = [
+                ("Conservative Growth", 0.015, 0.04, 0.3, 1, False, 0.01, 0.02),
+                ("Balanced Standard", 0.03, 0.08, 0.5, 1, False, 0.015, 0.03),
+                ("Aggressive Growth", 0.05, 0.15, 0.8, 2, False, 0.02, 0.04),
+                ("Defensive Income", 0.01, 0.03, 0.2, 1, False, 0.005, 0.01),
+                ("Tactical Leveraged", 0.04, 0.12, 0.6, 3, False, 0.02, 0.04),
+            ]
+        elif round_num == 2:
+            profiles = [
+                ("Defensive Trailing", 0.02, 0.06, 0.4, 1, True, 0.01, 0.02),
+                ("Balanced Trailing", 0.03, 0.10, 0.6, 1, True, 0.015, 0.03),
+                ("Aggressive Trailing", 0.04, 0.12, 0.5, 3, True, 0.02, 0.04),
+                ("Scalping Focus", 0.01, 0.02, 0.7, 1, False, 0.005, 0.01),
+                ("High Yield Speculator", 0.06, 0.20, 0.4, 2, True, 0.03, 0.05),
+            ]
+        else:  # Round 3
+            profiles = [
+                ("Max Capital Conservative", 0.02, 0.05, 1.0, 1, False, 0.01, 0.02),
+                ("High Volatility Buffer", 0.05, 0.25, 0.3, 2, True, 0.04, 0.06),
+                ("Micro-Scalping Trailing", 0.008, 0.025, 0.8, 1, True, 0.005, 0.01),
+                ("Ultra-Aggressive Leveraged", 0.06, 0.18, 0.9, 4, False, 0.02, 0.04),
+                ("Extreme Risk Arbitrage", 0.08, 0.30, 0.5, 3, True, 0.05, 0.08),
+            ]
+            
+        candidates = []
+        limit = min(n_candidates, len(profiles))
+        for i in range(limit):
+            name, sl, tp, entry, lev, trail_on, trail_pct, trail_act = profiles[i]
+            candidates.append({
+                'name': f"{name} (Fallback)",
+                'reasoning': f"Deterministic fallback optimizer profile testing stopLoss={sl:.1%}, takeProfit={tp:.1%}, leverage={lev}x.",
+                'indicatorParams': {},
+                'riskParams': {
+                    'stopLossPct': sl,
+                    'takeProfitPct': tp,
+                    'entryPct': entry,
+                    'leverage': lev,
+                    'trailingStop': {
+                        'enabled': trail_on,
+                        'pct': trail_pct,
+                        'activationPct': trail_act
+                    }
+                }
+            })
+            
+        while len(candidates) < n_candidates:
+            offset = len(candidates) * 0.01
+            candidates.append({
+                'name': f"Custom Variant {len(candidates) + 1} (Fallback)",
+                'reasoning': "Deterministic backup candidate variation.",
+                'indicatorParams': {},
+                'riskParams': {
+                    'stopLossPct': 0.02 + offset,
+                    'takeProfitPct': 0.06 + offset * 2,
+                    'entryPct': 0.5,
+                    'leverage': 1,
+                    'trailingStop': {
+                        'enabled': False,
+                        'pct': 0.02,
+                        'activationPct': 0.01
+                    }
+                }
+            })
+            
+        return candidates

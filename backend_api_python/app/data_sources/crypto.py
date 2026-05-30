@@ -409,7 +409,7 @@ class CryptoDataSource(BaseDataSource):
         except Exception as e:
             logger.warning(f"yfinance crypto fallback failed for {symbol}->{yf_symbol}: {e}")
             return []
-    
+
     def _fetch_ohlcv(
         self,
         symbol_pair: str,
@@ -420,6 +420,7 @@ class CryptoDataSource(BaseDataSource):
     ) -> List:
         """获取OHLCV数据（支持分页获取完整数据）"""
         import calendar
+        import time
         try:
             if before_time:
                 # 计算时间范围 — always work in UTC to match CCXT timestamps
@@ -430,20 +431,30 @@ class CryptoDataSource(BaseDataSource):
                 since = calendar.timegm(start_time.timetuple()) * 1000
                 end_ms = before_time * 1000
                 
-                # logger.info(f"历史数据请求: since={since//1000}, end={before_time}, 时间跨度={total_seconds/86400:.1f}天")
-                
                 # 分页获取数据，直到覆盖完整时间范围
                 all_ohlcv = []
                 batch_limit = 300  # Coinbase limit is often 300, safer than 1000
                 current_since = since
+                now_ms = int(time.time() * 1000)
                 
                 while current_since < end_ms:
-                    batch = self.exchange.fetch_ohlcv(
-                        symbol_pair, 
-                        ccxt_timeframe, 
-                        since=current_since, 
-                        limit=batch_limit
-                    )
+                    # Prevent requesting future timestamps from CCXT
+                    if current_since >= now_ms:
+                        break
+                    
+                    try:
+                        batch = self.exchange.fetch_ohlcv(
+                            symbol_pair, 
+                            ccxt_timeframe, 
+                            since=current_since, 
+                            limit=batch_limit
+                        )
+                    except Exception as batch_error:
+                        logger.warning(f"CCXT batch fetch failed at since={current_since}: {batch_error}")
+                        if not all_ohlcv:
+                            # If the very first batch failed, propagate to fallback
+                            raise batch_error
+                        break
                     
                     if not batch:
                         break
@@ -453,22 +464,17 @@ class CryptoDataSource(BaseDataSource):
                     # 获取最后一条数据的时间，作为下次请求的起始时间
                     last_timestamp = batch[-1][0]
                     
-                    # 如果最后一条数据时间超过了结束时间，或者返回数据少于请求量，说明已经获取完毕
-                    # if last_timestamp >= end_ms or len(batch) < batch_limit:
                     if last_timestamp >= end_ms:
                         break
                     
                     # 下次从最后一条的下一个时间点开始
                     timeframe_ms = TIMEFRAME_SECONDS.get(timeframe, 86400) * 1000
                     current_since = last_timestamp + timeframe_ms
-                    
-                    # logger.info(f"分页获取中: 已获取 {len(all_ohlcv)} 条, 继续从 {datetime.fromtimestamp(current_since/1000)}")
                 
                 ohlcv = all_ohlcv
             else:
                 ohlcv = self.exchange.fetch_ohlcv(symbol_pair, ccxt_timeframe, limit=limit)
             
-            # logger.info(f"CCXT 返回 {len(ohlcv) if ohlcv else 0} 条数据")
             return ohlcv
             
         except Exception as e:

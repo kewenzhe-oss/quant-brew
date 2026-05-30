@@ -732,6 +732,31 @@ def ai_generate():
     prompt = (data.get("prompt") or "").strip()
     existing = (data.get("existingCode") or "").strip()
 
+    # Map UI locale to a full language name for the LLM output-language directive.
+    _output_lang_map = {
+        "zh-CN": "Simplified Chinese",
+        "zh-TW": "Traditional Chinese",
+        "en-US": "English",
+        "ko-KR": "Korean",
+        "ja-JP": "Japanese",
+        "th-TH": "Thai",
+        "vi-VN": "Vietnamese",
+        "ar-SA": "Arabic",
+        "de-DE": "German",
+        "fr-FR": "French",
+    }
+    output_lang = _output_lang_map.get(lang, "English")
+    # Directive prepended to every system prompt so the model uses the correct language
+    # for all human-visible text (comments, descriptions, my_indicator_description).
+    # Code identifiers and Python syntax always stay in English.
+    _lang_directive = (
+        f"LANGUAGE INSTRUCTION: The user's UI language is {output_lang}. "
+        f"You MUST write all human-readable text — including my_indicator_description, "
+        f"inline code comments, and any user-visible strings — in {output_lang}. "
+        "Python code identifiers (variable names, function names) and the output dict keys "
+        "must remain in English. Never mix languages in a single text block.\n\n"
+    )
+
     if not prompt:
         # Keep SSE contract (match PHP behavior) so frontend doesn't look "stuck".
         def _err_stream():
@@ -745,7 +770,7 @@ def ai_generate():
         )
 
     # QuantDinger indicator IDE: chart render + backtest; must pass server verifyCode + safe_exec rules.
-    SYSTEM_PROMPT = """# Role
+    SYSTEM_PROMPT = _lang_directive + """# Role
 
 You write production-ready **QuantDinger** indicator scripts: Python that runs in the Indicator IDE, renders on the K-line chart, and drives **backtest entries/exits** via boolean signals. Code must be syntactically valid, safe for the host sandbox, and match the exact I/O contract below.
 
@@ -1009,7 +1034,8 @@ Return **only** valid Python source: **no** markdown fences, **no** ` ``` `, **n
 
         issues_text = _format_validation_issues(validation)
         repair_prompt = (
-            "You produced QuantDinger indicator code that failed automatic validation. "
+            _lang_directive
+            + "You produced QuantDinger indicator code that failed automatic validation. "
             "Fix the code while preserving the user's trading idea and parameters. "
             "Return one full replacement script only.\n\n"
             f"# Original user request\n{prompt}\n\n"
