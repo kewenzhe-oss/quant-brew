@@ -36,6 +36,7 @@ def resolve_metric_value(
     }
     """
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     
     def extract_clean_metric(data: Any, default_source_type: str) -> Dict[str, Any]:
         if not data:
@@ -51,6 +52,7 @@ def resolve_metric_value(
                 "as_of": now_str,
                 "date": now_str,
                 "asOf": now_str,
+                "fetched_at": now_iso,
                 "is_stale": False,
                 "status": "ok",
                 "error": None
@@ -92,6 +94,7 @@ def resolve_metric_value(
             "as_of": as_of_val,
             "date": as_of_val,
             "asOf": as_of_val,
+            "fetched_at": data.get("fetched_at") or now_iso,
             "is_stale": data.get("is_stale", False),
             "status": "ok",
             "error": None
@@ -142,6 +145,7 @@ def resolve_metric_value(
                         "as_of": as_of_val,
                         "date": as_of_val,
                         "asOf": as_of_val,
+                        "fetched_at": cached_data.get("fetched_at") or now_iso,
                         "is_stale": True,
                         "status": "ok",
                         "error": None
@@ -165,6 +169,7 @@ def resolve_metric_value(
         "as_of": now_str,
         "date": now_str,
         "asOf": now_str,
+        "fetched_at": now_iso,
         "is_stale": False,
         "status": "error",
         "error": "Data unavailable after primary, fallback, and cached attempts."
