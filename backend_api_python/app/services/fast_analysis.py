@@ -210,6 +210,7 @@ class FastAnalysisService:
         include_news: bool = True,
         include_polymarket: bool = True,
         timeout: int = 45,
+        language: str = "en-US",
     ) -> Dict[str, Any]:
         """
         使用统一的数据采集器收集市场数据
@@ -229,6 +230,7 @@ class FastAnalysisService:
             include_news=include_news,
             include_polymarket=include_polymarket,  # 包含预测市场数据
             timeout=timeout,  # 增加超时时间，确保数据收集完成
+            language=language,
         )
     
     def _calculate_indicators(self, kline_data: List[Dict]) -> Dict[str, Any]:
@@ -999,6 +1001,7 @@ IMPORTANT:
                 include_macro=True,
                 include_news=True,
                 include_polymarket=True,
+                language=language,
             )
 
             # Collect extra timeframes for objective consensus (technical-only for cost)
@@ -1046,6 +1049,7 @@ IMPORTANT:
                         include_news=False,
                         include_polymarket=False,
                         timeout=25,
+                        language=language,
                     )
 
                 current_price_tf = _extract_current_price(d_tf) or 0.0
@@ -1079,6 +1083,7 @@ IMPORTANT:
                         include_news=False,
                         include_polymarket=False,
                         timeout=25,
+                        language=language,
                     )
                     cp_1w = _extract_current_price(d_1w) or 0.0
                     obj_1w = self._calculate_objective_score(d_1w, cp_1w)
@@ -1103,6 +1108,7 @@ IMPORTANT:
                         include_news=False,
                         include_polymarket=False,
                         timeout=18,
+                        language=language,
                     )
                     cp_1h = _extract_current_price(d_1h) or 0.0
                     obj_1h = self._calculate_objective_score(d_1h, cp_1h)
@@ -1206,6 +1212,8 @@ IMPORTANT:
                 "technical_score": 50,
                 "fundamental_score": 50,
                 "sentiment_score": 50,
+                "ai_status": "failed",
+                "ai_error": "LLM call failed or JSON parsing failed",
             }
 
             # Phase 3: LLM call(s) - single or ensemble voting
@@ -1323,6 +1331,8 @@ IMPORTANT:
                 analysis["decision"] = final_decision
                 analysis["confidence"] = consensus_conf
                 original_summary = analysis.get("summary", "")
+                if analysis.get("ai_status") == "failed" and original_summary == "Analysis failed":
+                    original_summary = ""
                 is_zh = str(language or "").lower().startswith("zh")
                 if is_zh:
                     level = "强烈" if consensus_abs >= 70 else "明显" if consensus_abs >= 40 else "轻微"
@@ -1424,6 +1434,8 @@ IMPORTANT:
                 "summary": analysis.get("summary", ""),
                 "model": model,  # Model is already set in result initialization
                 "language": language,  # Ensure language is included for task record
+                "ai_status": analysis.get("ai_status", "success"),
+                "ai_error": analysis.get("ai_error"),
                 "detailed_analysis": {
                     "technical": detailed_analysis.get("technical", ""),
                     "fundamental": detailed_analysis.get("fundamental", ""),
@@ -2723,6 +2735,8 @@ IMPORTANT:
                 "overallScore": scores.get("overall", 50),
                 "recommendation": decision,
                 "confidence": confidence,
+                "ai_status": fast_result.get("ai_status", "success"),
+                "ai_error": fast_result.get("ai_error"),
                 "dimensionScores": {
                     "fundamental": scores.get("fundamental", 50),
                     "technical": scores.get("technical", 50),

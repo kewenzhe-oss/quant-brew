@@ -156,7 +156,7 @@ def get_menu_footer_config():
             'user_agreement': '',
             'privacy_policy': ''
         },
-        'copyright': '© 2025-2026 QuantDinger'
+        'copyright': '© 2025-2026 QuantBrew'
     }
     return jsonify({'code': 1, 'msg': 'success', 'data': data})
 

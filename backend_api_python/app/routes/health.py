@@ -11,7 +11,7 @@ health_bp = Blueprint('health', __name__)
 def index():
     """API 首页"""
     return jsonify({
-        'name': 'QuantDinger Python API',
+        'name': 'QuantBrew Python API',
         'version': '2.0.0',
         'status': 'running',
         'timestamp': datetime.now().isoformat()

@@ -554,6 +554,8 @@ class LLMService:
             
             # Parse JSON
             result = json.loads(clean_text)
+            if isinstance(result, dict):
+                result["ai_status"] = "success"
             return result
         except json.JSONDecodeError:
             logger.error(f"JSON parse failed. Raw text: {response_text[:200] if response_text else 'N/A'}")
@@ -565,16 +567,24 @@ class LLMService:
                     end = response_text.rfind('}') + 1
                     if start >= 0 and end > start:
                         result = json.loads(response_text[start:end])
-                        return result
+                        if isinstance(result, dict):
+                            result["ai_status"] = "success"
+                            return result
             except:
                 pass
             
-            default_structure['report'] = f"Failed to parse analysis result JSON. Raw output (partial): {response_text[:500] if response_text else 'N/A'}"
-            return default_structure
+            fallback_struct = default_structure.copy()
+            fallback_struct['report'] = f"Failed to parse analysis result JSON. Raw output (partial): {response_text[:500] if response_text else 'N/A'}"
+            fallback_struct['ai_status'] = 'failed'
+            fallback_struct['ai_error'] = 'JSON decode error'
+            return fallback_struct
         except Exception as e:
             logger.error(f"LLM call failed: {str(e)}")
-            default_structure['report'] = f"Analysis failed: {str(e)}"
-            return default_structure
+            fallback_struct = default_structure.copy()
+            fallback_struct['report'] = f"Analysis failed: {str(e)}"
+            fallback_struct['ai_status'] = 'failed'
+            fallback_struct['ai_error'] = str(e)
+            return fallback_struct
 
     @classmethod
     def get_available_providers(cls) -> List[Dict[str, Any]]:

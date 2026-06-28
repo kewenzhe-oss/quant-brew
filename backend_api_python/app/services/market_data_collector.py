@@ -77,7 +77,8 @@ class MarketDataCollector:
         include_macro: bool = True,
         include_news: bool = True,
         include_polymarket: bool = True,  # 新增：是否包含预测市场数据
-        timeout: int = 30
+        timeout: int = 30,
+        language: str = "zh-CN",
     ) -> Dict[str, Any]:
         """
         采集所有市场数据
@@ -167,6 +168,7 @@ class MarketDataCollector:
                     symbol=symbol,
                     price_data=data.get("price") or {},
                     kline_data=data.get("kline") or [],
+                    language=language,
                 )
                 if data["crypto_factors"]:
                     data["_meta"]["success_items"].append("crypto_factors")
@@ -1134,7 +1136,7 @@ class MarketDataCollector:
             'category': 'Unknown',
         }
 
-    def _get_crypto_factors(self, symbol: str, price_data: Dict[str, Any], kline_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _get_crypto_factors(self, symbol: str, price_data: Dict[str, Any], kline_data: List[Dict[str, Any]], language: str = "zh-CN") -> Dict[str, Any]:
         """采集加密货币专属交易大数据因子。"""
         base_symbol = self._normalize_crypto_base_symbol(symbol)
         if not base_symbol:
@@ -1166,6 +1168,7 @@ class MarketDataCollector:
             exchange_netflow=exchange_netflow,
             stablecoin_netflow=stablecoin_netflow,
             signals=signals,
+            language=language,
         )
 
         return {
@@ -1611,25 +1614,46 @@ class MarketDataCollector:
         exchange_netflow: Optional[float],
         stablecoin_netflow: Optional[float],
         signals: Dict[str, Any],
+        language: str = "zh-CN",
     ) -> str:
-        parts: List[str] = []
-        if open_interest_change_24h is not None:
-            parts.append(f"OI {'上升' if open_interest_change_24h >= 0 else '回落'} {abs(open_interest_change_24h):.1f}%")
-        if funding_rate is not None:
-            parts.append(f"资金费率{'偏正' if funding_rate >= 0 else '偏负'}")
-        if exchange_netflow is not None:
-            parts.append("交易所净流出" if exchange_netflow < 0 else "交易所净流入")
-        if stablecoin_netflow is not None:
-            parts.append("稳定币净流入增强" if stablecoin_netflow > 0 else "稳定币净流出")
-        if volume_change_24h is not None:
-            parts.append(f"成交活跃度{'放大' if volume_change_24h > 0 else '回落'}")
-        direction = signals.get("derivatives_bias", "neutral")
-        flow = signals.get("flow_bias", "neutral")
-        squeeze = signals.get("squeeze_risk", "low")
-        outlook = "偏多" if direction == "bullish" or flow == "bullish" else ("偏空" if direction == "bearish" or flow == "bearish" else "中性")
-        risk_text = {"high": "拥挤风险高", "medium": "拥挤度抬升", "low": "拥挤风险低"}.get(squeeze, "风险未知")
-        base = "、".join(parts[:4]) if parts else "链上与衍生品数据有限"
-        return f"{base}，整体{outlook}，{risk_text}"
+        if language == "en-US":
+            parts: List[str] = []
+            if open_interest_change_24h is not None:
+                parts.append(f"OI {'rose' if open_interest_change_24h >= 0 else 'dropped'} {abs(open_interest_change_24h):.1f}%")
+            if funding_rate is not None:
+                parts.append(f"funding rate {'positive' if funding_rate >= 0 else 'negative'}")
+            if exchange_netflow is not None:
+                parts.append("exchange net outflow" if exchange_netflow < 0 else "exchange net inflow")
+            if stablecoin_netflow is not None:
+                parts.append("stablecoin net inflow strengthened" if stablecoin_netflow > 0 else "stablecoin net outflow")
+            if volume_change_24h is not None:
+                parts.append(f"volume activity {'expanded' if volume_change_24h > 0 else 'contracted'}")
+            direction = signals.get("derivatives_bias", "neutral")
+            flow = signals.get("flow_bias", "neutral")
+            squeeze = signals.get("squeeze_risk", "low")
+            outlook = "bullish" if direction == "bullish" or flow == "bullish" else ("bearish" if direction == "bearish" or flow == "bearish" else "neutral")
+            risk_text = {"high": "high squeeze risk", "medium": "rising squeeze risk", "low": "low squeeze risk"}.get(squeeze, "unknown risk")
+            base = ", ".join(parts[:4]) if parts else "limited on-chain & derivatives data"
+            return f"{base.capitalize()}, overall {outlook}, {risk_text}"
+        else:
+            parts: List[str] = []
+            if open_interest_change_24h is not None:
+                parts.append(f"OI {'上升' if open_interest_change_24h >= 0 else '回落'} {abs(open_interest_change_24h):.1f}%")
+            if funding_rate is not None:
+                parts.append(f"资金费率{'偏正' if funding_rate >= 0 else '偏负'}")
+            if exchange_netflow is not None:
+                parts.append("交易所净流出" if exchange_netflow < 0 else "交易所净流入")
+            if stablecoin_netflow is not None:
+                parts.append("稳定币净流入增强" if stablecoin_netflow > 0 else "稳定币净流出")
+            if volume_change_24h is not None:
+                parts.append(f"成交活跃度{'放大' if volume_change_24h > 0 else '回落'}")
+            direction = signals.get("derivatives_bias", "neutral")
+            flow = signals.get("flow_bias", "neutral")
+            squeeze = signals.get("squeeze_risk", "low")
+            outlook = "偏多" if direction == "bullish" or flow == "bullish" else ("偏空" if direction == "bearish" or flow == "bearish" else "中性")
+            risk_text = {"high": "拥挤风险高", "medium": "拥挤度抬升", "low": "拥挤风险低"}.get(squeeze, "风险未知")
+            base = "、".join(parts[:4]) if parts else "链上与衍生品数据有限"
+            return f"{base}，整体{outlook}，{risk_text}"
     
     def _get_company(self, market: str, symbol: str) -> Optional[Dict[str, Any]]:
         """获取公司信息"""

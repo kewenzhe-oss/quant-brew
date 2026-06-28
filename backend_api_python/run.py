@@ -104,7 +104,7 @@ app = create_app()
 def main():
     """启动应用"""
     # Keep startup messages ASCII-only and short.
-    print("QuantDinger Python API v2.2.2")
+    print("QuantBrew Python API v2.2.2")
     
     # ========== Critical Security Check for SECRET_KEY ==========
     # In production (DEBUG=False), the SECRET_KEY MUST NOT use the default example value.
