@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QuantBrew Brand Preview</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; gap: 2rem; padding: 2rem; background: #f3f4f6; }
+    .row { display: flex; gap: 2rem; align-items: center; }
+    .card { padding: 2rem; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 250px; height: 150px; }
+    .light { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .dark { background: #111111; color: #f9fafb; border: 1px solid #333; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); }
+    /* Force light/dark preferences for the img by using an iframe if we must, but modern browsers pass prefers-color-scheme to SVGs.
+       However, to explicitly show BOTH at once regardless of OS setting, we'd need to use inline SVGs or hardcoded colors.
+       For this preview, relying on OS setting is fine, or we can use object tag. */
+    img.icon { width: 48px; height: 48px; }
+    img.lockup { width: 180px; height: 32px; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>Brand Assets Preview</h1>
+  <p>Note: The SVGs use <code>prefers-color-scheme</code>. To see both modes accurately, toggle your OS Dark Mode setting.</p>
+  
+  <div class="row">
+    <div class="card light">
+      <h2>Light Surface</h2>
+      <img class="icon" src="./icon-primary.svg" alt="Primary">
+    </div>
+    <div class="card dark">
+      <h2>Dark Surface</h2>
+      <img class="icon" src="./icon-primary.svg" alt="Primary">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card light">
+      <img class="lockup" src="./lockup.svg" alt="Lockup">
+    </div>
+    <div class="card dark">
+      <img class="lockup" src="./lockup.svg" alt="Lockup">
+    </div>
+  </div>
+</body>
+</html>

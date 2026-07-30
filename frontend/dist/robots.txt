@@ -1,0 +1,30 @@
+# QuantBrew Robots.txt - SEO & GEO (AI Engine Optimization) Configuration
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# AI Crawlers Configuration for Generative Engine Optimization (GEO)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# Sitemap & LLM Knowledge Locations
+Sitemap: https://quantbrew.com/sitemap.xml

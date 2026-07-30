@@ -1,0 +1,43 @@
+# QuantBrew Full Platform Specification
+
+> QuantBrew is a personal AI quantitative research and learning workbench designed to empower individual traders, quantitative analysts, and financial researchers. "Research-Driven Decisions, Discipline Over Emotion."
+
+## System Architecture & Data Pipeline
+
+QuantBrew combines multi-asset market data (equities, macro indicators, yields) with Large Language Models (LLM) to assist investors in structured observation, research, risk management, and post-trade review.
+
+### 1. Daily Overview Dashboard (/dashboard)
+Provides daily tracking of asset classes including US Equities, Global Indices, Forex, and Commodities:
+- Multi-asset watchlist monitoring and price performance.
+- Macro temperature snapshots and market regime context.
+- Daily market overview and key asset dynamics.
+
+### 2. AI Asset Analysis (/ai-asset-analysis)
+A centralized hub for multi-dimensional asset evaluation using LLM engines:
+- Multi-asset snapshot: Integrated technical, fundamental, and valuation perspectives.
+- Risk spectrum analysis and fundamental health checks.
+- LLM-assisted qualitative text synthesis from market data.
+
+### 3. Stock Research (/stock-research)
+Interactive equity workspace for single-stock and sector analysis:
+- Earnings report insights and fundamental data parsing.
+- Financial statement visualization (Balance Sheet, Income Statement, Cash Flow).
+- Valuation metrics vs industry benchmarks (P/E, P/S, EV/EBITDA).
+
+### 4. Trade Planning & Risk Controls (/indicator-ide)
+Workbench for disciplined trade formulation and risk management:
+- Trade plan logger for recording entry thesis, target price, and exit criteria.
+- Risk management calculator (position sizing based on portfolio risk tolerance and stop-loss).
+- Technical analysis views and chart indicator support.
+
+### 5. Macro Intelligence (/macro)
+Cross-asset macro analytics matrix:
+- Interest rate yield curve dynamics (US10Y, US02Y spread).
+- Inflation metrics (CPI, PPI, PCE) and rate environment tracking.
+- Macroeconomic context for cross-asset positioning.
+
+### 6. Learning Center (/learning)
+Educational platform covering:
+- Quantitative finance fundamentals and risk management concepts.
+- Methodological frameworks for systematic investing and trade journaling.
+- Structured knowledge base for continuous learning.

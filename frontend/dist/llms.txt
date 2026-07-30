@@ -1,0 +1,17 @@
+# QuantBrew
+
+> QuantBrew is a personal AI quantitative research and learning workbench for traders and researchers. It provides market observation, fundamental asset analysis, macro insights, trade planning, and post-trade reflection tools—with zero automated execution or signal selling.
+
+## Key Capabilities
+
+- [Daily Overview Dashboard](https://quantbrew.com/dashboard): Daily overview of multi-asset markets, macro temperature snapshots, and watchlist monitoring.
+- [AI Asset Analysis](https://quantbrew.com/ai-asset-analysis): Multi-dimensional asset evaluation powered by LLM text synthesis and fundamental metrics.
+- [Stock Research Workspace](https://quantbrew.com/stock-research): Deep-dive equity research, fundamentals, earnings insights, and valuation perspectives.
+- [Trade Planning & Risk Controls](https://quantbrew.com/indicator-ide): Quantitative trade plan logging, position sizing risk calculators, and technical analysis views.
+- [Macro Intelligence](https://quantbrew.com/macro): Global macroeconomic matrix tracking yield curves, inflation metrics, and cross-asset dynamics.
+- [Daily Briefing](https://quantbrew.com/briefing): AI-curated daily financial digests summarizing key market events.
+- [Learning Center](https://quantbrew.com/learning): Educational knowledge base covering quantitative concepts, risk management, and investment methodology.
+
+## Developer & API Resources
+
+- [Full Documentation](https://quantbrew.com/llms-full.txt): Complete platform architecture and feature specification for AI models.
