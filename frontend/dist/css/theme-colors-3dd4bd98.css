@@ -141,10 +141,6 @@ body.dark .tw-btn[data-v-dae52db2]:hover,body.realdark .tw-btn[data-v-dae52db2]:
 .ide-watchlist-dropdown .wl-mkt-usstock{background:#1890ff}
 .ide-watchlist-dropdown .ant-select-dropdown-menu-item-selected{background:#e6f7ff}
 .ide-watchlist-dropdown .ant-select-dropdown-menu-item-selected .wl-opt-symbol{color:#1890ff}
-.section-icon[data-v-09040f44]{color:#1890ff}
-.section-link[data-v-09040f44]{color:#1890ff}
-.env-icon[data-v-09040f44]{color:#1890ff}
-.empty-hint a[data-v-09040f44]{color:#1890ff}
 .section-title[data-v-5763240e]{border-left:4px solid #1890ff}
 .dca-amount[data-v-5763240e]{color:#1890ff}
 body.dark[data-v-3ab7cbb0] .ant-tabs-tab:hover,body.realdark[data-v-3ab7cbb0] .ant-tabs-tab:hover{color:#1890ff!important}
@@ -239,6 +235,10 @@ body.dark[data-v-3ab7cbb0] .ant-tabs-tab-active,body.realdark[data-v-3ab7cbb0] .
 .qd-dark-drawer .ant-btn-default:hover{border-color:#1890ff;color:#1890ff}
 .qd-dark-drawer .ant-tabs-tab-active{color:#1890ff!important}
 .qd-dark-modal .ant-select-dropdown .ant-select-dropdown-menu-item-selected,body.colorWeak .ant-select-dropdown .ant-select-dropdown-menu-item-selected{background:rgba(24,144,255,.1);color:#1890ff}
+.section-icon[data-v-42345663]{color:#1890ff}
+.section-link[data-v-42345663]{color:#1890ff}
+.env-icon[data-v-42345663]{color:#1890ff}
+.empty-hint a[data-v-42345663]{color:#1890ff}
 .user-manage-page .page-header .page-title .anticon[data-v-46e471da]{color:#1890ff}
 .user-manage-page .address-text[data-v-46e471da],.user-manage-page .hash-text[data-v-46e471da]{color:#1890ff}
 .user-manage-page.theme-dark .manage-tabs[data-v-46e471da] .ant-tabs-tab-active{color:#1890ff}
