@@ -63,6 +63,10 @@ body.dark .ant-modal-confirm .ant-btn-primary:hover,body.realdark .ant-modal-con
 .verdict-badge.processing[data-v-12eb63e2]{background:rgba(24,144,255,.1);color:#1890ff;border:1px solid rgba(24,144,255,.3)}
 .settings-page.theme-dark .settings-form[data-v-85edfecc] .ant-form-item-label .form-label-with-tooltip .api-link{background:rgba(24,144,255,.15)}
 .settings-page.theme-dark .settings-form[data-v-85edfecc] .ant-form-item-label .form-label-with-tooltip .api-link:hover{background:rgba(24,144,255,.25)}
+.section-icon[data-v-18c68055]{color:#1890ff}
+.section-link[data-v-18c68055]{color:#1890ff}
+.env-icon[data-v-18c68055]{color:#1890ff}
+.empty-hint a[data-v-18c68055]{color:#1890ff}
 body.dark[data-v-dae52db2] .ant-input-number:focus,body.dark[data-v-dae52db2] .ant-input-number:hover,body.dark[data-v-dae52db2] .ant-input:focus,body.dark[data-v-dae52db2] .ant-input:hover,body.dark[data-v-dae52db2] .ant-select-selection:focus,body.dark[data-v-dae52db2] .ant-select-selection:hover,body.realdark[data-v-dae52db2] .ant-input-number:focus,body.realdark[data-v-dae52db2] .ant-input-number:hover,body.realdark[data-v-dae52db2] .ant-input:focus,body.realdark[data-v-dae52db2] .ant-input:hover,body.realdark[data-v-dae52db2] .ant-select-selection:focus,body.realdark[data-v-dae52db2] .ant-select-selection:hover{border-color:#1890ff!important}
 body.dark .tw-btn[data-v-dae52db2]:hover,body.realdark .tw-btn[data-v-dae52db2]:hover{border-color:#1890ff!important}
 .drawing-tool-btn[data-v-821eb4da]:hover{color:#1890ff}
@@ -235,10 +239,6 @@ body.dark[data-v-3ab7cbb0] .ant-tabs-tab-active,body.realdark[data-v-3ab7cbb0] .
 .qd-dark-drawer .ant-btn-default:hover{border-color:#1890ff;color:#1890ff}
 .qd-dark-drawer .ant-tabs-tab-active{color:#1890ff!important}
 .qd-dark-modal .ant-select-dropdown .ant-select-dropdown-menu-item-selected,body.colorWeak .ant-select-dropdown .ant-select-dropdown-menu-item-selected{background:rgba(24,144,255,.1);color:#1890ff}
-.section-icon[data-v-42345663]{color:#1890ff}
-.section-link[data-v-42345663]{color:#1890ff}
-.env-icon[data-v-42345663]{color:#1890ff}
-.empty-hint a[data-v-42345663]{color:#1890ff}
 .user-manage-page .page-header .page-title .anticon[data-v-46e471da]{color:#1890ff}
 .user-manage-page .address-text[data-v-46e471da],.user-manage-page .hash-text[data-v-46e471da]{color:#1890ff}
 .user-manage-page.theme-dark .manage-tabs[data-v-46e471da] .ant-tabs-tab-active{color:#1890ff}
